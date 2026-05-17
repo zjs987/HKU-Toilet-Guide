@@ -1,0 +1,7 @@
+<resources>
+    <color name="hku_green">#007367</color>
+    <color name="hku_gold">#F5B335</color>
+    <color name="screen_bg">#F7F8FA</color>
+    <color name="text_primary">#172026</color>
+    <color name="text_secondary">#5C6870</color>
+</resources>

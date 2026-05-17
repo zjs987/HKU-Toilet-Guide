@@ -1,0 +1,63 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+
+    <!-- HKU-inspired shield mark. It is original artwork, not the official HKU crest. -->
+    <path
+        android:fillColor="#7A1632"
+        android:pathData="M48,5 L82,17 L82,45 C82,66 68,82 48,91 C28,82 14,66 14,45 L14,17 Z" />
+    <path
+        android:fillColor="#9B1B3F"
+        android:pathData="M48,10 L76,20 L76,44 C76,61 64,74 48,82 C32,74 20,61 20,44 L20,20 Z" />
+    <path
+        android:fillColor="#F3C247"
+        android:pathData="M48,15 L71,23 L71,43 C71,57 62,68 48,75 C34,68 25,57 25,43 L25,23 Z"
+        android:fillAlpha="0.18" />
+
+    <!-- Geometric HKU lettering for a clearer university cue. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M27,27 H32 V39 H38 V27 H43 V58 H38 V45 H32 V58 H27 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,27 H53 V39 L61,27 H67 L58,41 L68,58 H62 L54,45 L53,46 V58 H48 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M69,27 H74 V47 C74,55 69,59 62,59 C60,59 58,59 56,58 L57,52 C59,53 61,53 62,53 C66,53 69,51 69,47 Z"
+        android:fillAlpha="0.9" />
+
+    <!-- Main Building / campus arch hint. -->
+    <path
+        android:fillColor="#F3C247"
+        android:pathData="M29,63 H67 V67 H29 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M33,67 H38 V76 H33 Z M45,67 H50 V76 H45 Z M58,67 H63 V76 H58 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,67 C38,60 58,60 58,67 H53 C53,64 43,64 43,67 Z" />
+
+    <!-- Toilet finder pin sits inside the HKU shield. -->
+    <path
+        android:fillColor="#0B8066"
+        android:pathData="M48,48 C42,48 37,53 37,59 C37,67 48,79 48,79 C48,79 59,67 59,59 C59,53 54,48 48,48 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,57 H54 A2,2 0,0 1,54 61 H42 A2,2 0,0 1,42 57 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,60 H53 V63 C53,67 51,69 48,69 C45,69 43,67 43,63 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,69 H50 V72 H46 Z" />
+
+    <!-- Small category dots echo the app's filter colors without stealing focus. -->
+    <path
+        android:fillColor="#3B7BE8"
+        android:pathData="M30,79 A3,3 0,1 0,30.1 79 Z" />
+    <path
+        android:fillColor="#E84F91"
+        android:pathData="M66,79 A3,3 0,1 0,66.1 79 Z" />
+</vector>

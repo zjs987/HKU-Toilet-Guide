@@ -1,0 +1,14 @@
+apply plugin: "com.android.application"
+
+android {
+    namespace "com.hku.toiletguide"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.hku.toiletguide"
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "0.1.0"
+    }
+}
