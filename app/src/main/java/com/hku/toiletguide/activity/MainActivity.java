@@ -11,6 +11,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -46,14 +47,41 @@ public class MainActivity extends Activity {
     private LinearLayout buildContent() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.WHITE);
+        root.setBackgroundColor(Color.rgb(7, 17, 28));
+
+        FrameLayout contentFrame = new FrameLayout(this);
+        contentFrame.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+        ));
+
+        ImageView background = new ImageView(this);
+        background.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        int backgroundRes = getDrawableId("mainbuilding");
+        if (backgroundRes != 0) {
+            background.setImageResource(backgroundRes);
+        } else {
+            background.setBackgroundColor(Color.rgb(28, 51, 67));
+        }
+        contentFrame.addView(background, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        View overlay = new View(this);
+        overlay.setBackgroundColor(Color.argb(118, 6, 16, 26));
+        contentFrame.addView(overlay, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(Color.TRANSPARENT);
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setBackgroundColor(UiFactory.GREEN);
         scrollView.addView(page, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -61,11 +89,11 @@ public class MainActivity extends Activity {
 
         page.addView(buildHero());
         page.addView(buildListPanel());
-        root.addView(scrollView, new LinearLayout.LayoutParams(
+        contentFrame.addView(scrollView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
+                ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        root.addView(contentFrame);
         root.addView(buildBottomNav());
         return root;
     }
@@ -73,52 +101,76 @@ public class MainActivity extends Activity {
     private LinearLayout buildHero() {
         LinearLayout hero = new LinearLayout(this);
         hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(UiFactory.dp(this, 20), UiFactory.dp(this, 34), UiFactory.dp(this, 20), UiFactory.dp(this, 28));
+        hero.setPadding(UiFactory.dp(this, 20), UiFactory.dp(this, 34), UiFactory.dp(this, 20), UiFactory.dp(this, 26));
 
         LinearLayout brandRow = new LinearLayout(this);
         brandRow.setGravity(Gravity.CENTER_VERTICAL);
+        brandRow.setBackground(UiFactory.darkOverlayPanel(this, 24));
+        brandRow.setPadding(UiFactory.dp(this, 14), UiFactory.dp(this, 10), UiFactory.dp(this, 14), UiFactory.dp(this, 10));
 
         ImageView brand = new ImageView(this);
         brand.setImageResource(R.drawable.ic_brand_mark);
         brand.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         brandRow.addView(brand, new LinearLayout.LayoutParams(UiFactory.dp(this, 52), UiFactory.dp(this, 52)));
 
-        TextView appName = UiFactory.label(this, "HKU Toilet Guide", 29, Color.WHITE, true);
+        TextView appName = UiFactory.label(this, "HKU Toilet Guide", 24, Color.WHITE, true);
         appName.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams appNameParams = new LinearLayout.LayoutParams(0, UiFactory.dp(this, 52), 1f);
+        appName.setSingleLine(true);
+        appName.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams appNameParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         appNameParams.setMargins(UiFactory.dp(this, 12), 0, 0, 0);
         brandRow.addView(appName, appNameParams);
-        hero.addView(brandRow, new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams brandParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                UiFactory.dp(this, 56)
-        ));
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        hero.addView(brandRow, brandParams);
+
+        TextView eyebrow = UiFactory.label(this, "CAMPUS WAYFINDING", 12, Color.argb(220, 255, 255, 255), false);
+        eyebrow.setLetterSpacing(0.26f);
+        LinearLayout.LayoutParams eyebrowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        eyebrowParams.setMargins(0, UiFactory.dp(this, 28), 0, 0);
+        hero.addView(eyebrow, eyebrowParams);
+
+        TextView headline = UiFactory.label(this, "Find the right washroom before the queue finds you", 29, Color.WHITE, true);
+        headline.setLineSpacing(UiFactory.dp(this, 5), 1f);
+        headline.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams headlineParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        headlineParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
+        hero.addView(headline, headlineParams);
 
         TextView subtitle = UiFactory.label(this,
-                "Find clean, quiet campus toilets faster · " + repository.getCurrentUser().displayName,
-                14,
+                "Live shortlist for " + repository.getCurrentUser().displayName + ". Compare distance, crowd level and facilities without losing the quick access you already had.",
+                15,
                 Color.argb(220, 255, 255, 255),
                 false);
-        subtitle.setGravity(Gravity.CENTER_VERTICAL);
+        subtitle.setLineSpacing(UiFactory.dp(this, 4), 1f);
         LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                UiFactory.dp(this, 30)
+                ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        subtitleParams.setMargins(0, 0, 0, UiFactory.dp(this, 18));
+        subtitleParams.setMargins(0, UiFactory.dp(this, 10), 0, UiFactory.dp(this, 20));
         hero.addView(subtitle, subtitleParams);
 
         LinearLayout search = new LinearLayout(this);
         search.setOrientation(LinearLayout.HORIZONTAL);
         search.setGravity(Gravity.CENTER_VERTICAL);
         search.setPadding(UiFactory.dp(this, 18), 0, UiFactory.dp(this, 8), 0);
-        search.setBackground(UiFactory.rounded(this, Color.WHITE, 30));
+        search.setBackground(UiFactory.frostedPanel(this, 30));
         search.setElevation(UiFactory.dp(this, 4));
 
         ImageView searchIcon = new ImageView(this);
         searchIcon.setImageResource(R.drawable.ic_filter);
-        searchIcon.setColorFilter(UiFactory.MUTED);
+        searchIcon.setColorFilter(Color.WHITE);
         search.addView(searchIcon, new LinearLayout.LayoutParams(UiFactory.dp(this, 30), UiFactory.dp(this, 30)));
 
-        TextView searchText = UiFactory.label(this, "Search building", 17, UiFactory.MUTED, false);
+        TextView searchText = UiFactory.label(this, "Search building", 17, Color.argb(205, 255, 255, 255), false);
         searchText.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams searchTextParams = new LinearLayout.LayoutParams(0, UiFactory.dp(this, 58), 1f);
         searchTextParams.setMargins(UiFactory.dp(this, 12), 0, 0, 0);
@@ -126,11 +178,11 @@ public class MainActivity extends Activity {
 
         Button advanced = new Button(this);
         advanced.setText("Filter");
-        advanced.setTextColor(UiFactory.DARK_GREEN);
+        advanced.setTextColor(Color.WHITE);
         advanced.setAllCaps(false);
         advanced.setTypeface(Typeface.DEFAULT_BOLD);
         advanced.setGravity(Gravity.CENTER);
-        advanced.setBackground(UiFactory.roundedStroke(this, Color.WHITE, 24, Color.rgb(224, 234, 232)));
+        advanced.setBackground(UiFactory.roundedStroke(this, Color.argb(45, 255, 255, 255), 24, Color.argb(120, 255, 255, 255), 1));
         advanced.setOnClickListener(v -> showSortDialog());
         search.addView(advanced, new LinearLayout.LayoutParams(
                 UiFactory.dp(this, 108),
@@ -144,10 +196,10 @@ public class MainActivity extends Activity {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(UiFactory.dp(this, 18), UiFactory.dp(this, 14), UiFactory.dp(this, 18), UiFactory.dp(this, 18));
-        panel.setBackground(UiFactory.rounded(this, Color.WHITE, 28));
+        panel.setBackground(UiFactory.frostedPanel(this, 28));
 
         LinearLayout handle = new LinearLayout(this);
-        handle.setBackground(UiFactory.rounded(this, Color.rgb(176, 176, 184), 4));
+        handle.setBackground(UiFactory.rounded(this, Color.argb(170, 255, 255, 255), 4));
         LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(
                 UiFactory.dp(this, 54),
                 UiFactory.dp(this, 6)
@@ -160,7 +212,7 @@ public class MainActivity extends Activity {
 
         List<Toilet> toilets = filteredToilets();
         if (toilets.isEmpty()) {
-            TextView empty = UiFactory.label(this, "No toilets match the current filters.", 16, UiFactory.MUTED, false);
+            TextView empty = UiFactory.label(this, "No toilets match the current filters.", 16, Color.argb(220, 255, 255, 255), false);
             empty.setGravity(Gravity.CENTER);
             panel.addView(empty, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -209,7 +261,7 @@ public class MainActivity extends Activity {
         icon.setPadding(inset, inset, inset, inset);
         icon.setBackground(selected
                 ? UiFactory.rounded(this, selectedColor, 24)
-                : UiFactory.rounded(this, Color.WHITE, 24));
+                : UiFactory.rounded(this, Color.argb(150, 255, 255, 255), 24));
         icon.setElevation(selected ? UiFactory.dp(this, 2) : 0);
         icon.setOnClickListener(v -> {
             toggle.run();
@@ -238,7 +290,7 @@ public class MainActivity extends Activity {
         icon.setColorFilter(iconColor);
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         icon.setPadding(UiFactory.dp(this, 11), UiFactory.dp(this, 11), UiFactory.dp(this, 11), UiFactory.dp(this, 11));
-        icon.setBackground(UiFactory.roundedStroke(this, backgroundColor, 24, Color.rgb(226, 230, 233)));
+        icon.setBackground(UiFactory.roundedStroke(this, Color.argb(150, 255, 255, 255), 24, Color.argb(120, 255, 255, 255), 1));
         icon.setElevation(UiFactory.dp(this, 2));
         icon.setOnClickListener(v -> action.run());
 
@@ -251,11 +303,11 @@ public class MainActivity extends Activity {
     private LinearLayout buildTitleRow() {
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
-        titleRow.addView(UiFactory.label(this, "Nearby Toilets", 20, UiFactory.TEXT, true), new LinearLayout.LayoutParams(0, UiFactory.dp(this, 46), 1f));
+        titleRow.addView(UiFactory.label(this, "Nearby Toilets", 20, Color.WHITE, true), new LinearLayout.LayoutParams(0, UiFactory.dp(this, 46), 1f));
 
-        TextView sort = UiFactory.label(this, sortMode == 0 ? "Distance" : "Rating", 14, UiFactory.DARK_GREEN, true);
+        TextView sort = UiFactory.label(this, sortMode == 0 ? "Distance" : "Rating", 14, Color.WHITE, true);
         sort.setGravity(Gravity.CENTER);
-        sort.setBackground(UiFactory.rounded(this, Color.rgb(232, 248, 245), 20));
+        sort.setBackground(UiFactory.rounded(this, Color.argb(120, 255, 255, 255), 20));
         sort.setOnClickListener(v -> showSortDialog());
         titleRow.addView(sort, new LinearLayout.LayoutParams(UiFactory.dp(this, 104), UiFactory.dp(this, 40)));
         return titleRow;
@@ -265,7 +317,7 @@ public class MainActivity extends Activity {
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
         nav.setPadding(UiFactory.dp(this, 8), UiFactory.dp(this, 6), UiFactory.dp(this, 8), UiFactory.dp(this, 6));
-        nav.setBackgroundColor(Color.WHITE);
+        nav.setBackgroundColor(Color.rgb(7, 17, 28));
         nav.setElevation(UiFactory.dp(this, 8));
         nav.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -322,6 +374,7 @@ public class MainActivity extends Activity {
         row.addView(info, infoParams);
 
         TextView name = UiFactory.label(this, toilet.building, 18, UiFactory.TEXT, false);
+        name.setTextColor(Color.WHITE);
         name.setGravity(Gravity.CENTER_VERTICAL);
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
@@ -330,7 +383,7 @@ public class MainActivity extends Activity {
         TextView meta = UiFactory.label(this,
                 toilet.floor + " | " + toilet.genderLabel(),
                 13,
-                UiFactory.MUTED,
+                Color.argb(220, 255, 255, 255),
                 false);
         meta.setGravity(Gravity.CENTER_VERTICAL);
         info.addView(meta, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -353,7 +406,7 @@ public class MainActivity extends Activity {
         TextView distance = UiFactory.label(this,
                 DistanceUtil.metersLabel(DistanceUtil.distanceFromHkuCenter(toilet.latitude, toilet.longitude)),
                 15,
-                UiFactory.DARK_GREEN,
+                Color.WHITE,
                 true);
         distance.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         side.addView(distance, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -460,5 +513,9 @@ public class MainActivity extends Activity {
         Intent intent = new Intent(this, DetailActivity.class);
         intent.putExtra(DetailActivity.EXTRA_TOILET_ID, toiletId);
         startActivity(intent);
+    }
+
+    private int getDrawableId(String name) {
+        return getResources().getIdentifier(name, "drawable", getPackageName());
     }
 }

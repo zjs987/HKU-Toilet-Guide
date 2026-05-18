@@ -3,6 +3,8 @@ package com.hku.toiletguide.util;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.Typeface;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -38,6 +40,24 @@ public class UiFactory {
         GradientDrawable drawable = rounded(context, color, radiusDp);
         drawable.setStroke(dp(context, 1), strokeColor);
         return drawable;
+    }
+
+    public static GradientDrawable roundedStroke(Context context, int color, int radiusDp, int strokeColor, int strokeWidthDp) {
+        GradientDrawable drawable = rounded(context, color, radiusDp);
+        drawable.setStroke(dp(context, strokeWidthDp), strokeColor);
+        return drawable;
+    }
+
+    public static Drawable frostedPanel(Context context, int radiusDp) {
+        GradientDrawable fill = rounded(context, Color.argb(150, 255, 255, 255), radiusDp);
+        GradientDrawable stroke = roundedStroke(context, Color.TRANSPARENT, radiusDp, Color.argb(140, 255, 255, 255), 1);
+        return new LayerDrawable(new Drawable[]{fill, stroke});
+    }
+
+    public static Drawable darkOverlayPanel(Context context, int radiusDp) {
+        GradientDrawable fill = rounded(context, Color.argb(130, 14, 24, 34), radiusDp);
+        GradientDrawable stroke = roundedStroke(context, Color.TRANSPARENT, radiusDp, Color.argb(90, 255, 255, 255), 1);
+        return new LayerDrawable(new Drawable[]{fill, stroke});
     }
 
     public static TextView title(Context context, String text) {
