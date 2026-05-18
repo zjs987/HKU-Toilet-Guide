@@ -1,5 +1,8 @@
 package com.hku.toiletguide.data;
 
+import android.content.Context;
+
+import com.hku.toiletguide.auth.LocalAuthStore;
 import com.hku.toiletguide.model.ContentSubmission;
 import com.hku.toiletguide.model.LiveStatusReport;
 import com.hku.toiletguide.model.Review;
@@ -22,6 +25,7 @@ public class MockToiletRepository implements ToiletRepository {
     private final User studentUser = new User("user_hku_001", "HKU Student", "hku.student@connect.hku.hk", "user");
     private final User adminUser = new User("admin_hku_001", "HKU Admin", "admin@hku.hk", "admin");
     private User currentUser = studentUser;
+    private LocalAuthStore authStore;
 
     private final List<Toilet> toilets = new ArrayList<>();
     private final Set<String> favoriteToiletIds = new HashSet<>();
@@ -37,6 +41,17 @@ public class MockToiletRepository implements ToiletRepository {
 
     private MockToiletRepository() {
         seed();
+    }
+
+    public void init(Context context) {
+        if (authStore != null) {
+            return;
+        }
+        authStore = new LocalAuthStore(context);
+        User savedUser = authStore.getCurrentUser();
+        if (savedUser != null) {
+            currentUser = savedUser;
+        }
     }
 
     @Override
@@ -63,18 +78,51 @@ public class MockToiletRepository implements ToiletRepository {
     public boolean login(String email, String password) {
         if ("hku.student@connect.hku.hk".equalsIgnoreCase(email) && "student123".equals(password)) {
             currentUser = studentUser;
+            persistCurrentUser(studentUser.email);
             return true;
         }
         if ("admin@hku.hk".equalsIgnoreCase(email) && "admin123".equals(password)) {
             currentUser = adminUser;
+            persistCurrentUser(adminUser.email);
             return true;
+        }
+        if (authStore != null) {
+            User localUser = authStore.authenticate(email, password);
+            if (localUser != null) {
+                currentUser = localUser;
+                persistCurrentUser(localUser.email);
+                return true;
+            }
         }
         return false;
     }
 
     @Override
+    public boolean register(String displayName, String email, String password) {
+        if (displayName == null || displayName.trim().isEmpty()) {
+            return false;
+        }
+        if ("hku.student@connect.hku.hk".equalsIgnoreCase(email) || "admin@hku.hk".equalsIgnoreCase(email)) {
+            return false;
+        }
+        if (authStore == null || !authStore.register(displayName.trim(), email, password)) {
+            return false;
+        }
+        User localUser = authStore.authenticate(email, password);
+        if (localUser == null) {
+            return false;
+        }
+        currentUser = localUser;
+        persistCurrentUser(localUser.email);
+        return true;
+    }
+
+    @Override
     public void logout() {
         currentUser = studentUser;
+        if (authStore != null) {
+            authStore.clearCurrentUser();
+        }
     }
 
     @Override
@@ -260,6 +308,12 @@ public class MockToiletRepository implements ToiletRepository {
             favoriteToiletIds.remove(toiletId);
         } else {
             favoriteToiletIds.add(toiletId);
+        }
+    }
+
+    private void persistCurrentUser(String email) {
+        if (authStore != null) {
+            authStore.setCurrentUser(email);
         }
     }
 

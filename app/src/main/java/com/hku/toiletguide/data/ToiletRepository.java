@@ -17,6 +17,8 @@ public interface ToiletRepository {
 
     boolean login(String email, String password);
 
+    boolean register(String displayName, String email, String password);
+
     void logout();
 
     void addReview(String toiletId, Review review);

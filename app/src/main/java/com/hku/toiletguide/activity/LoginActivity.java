@@ -1,14 +1,23 @@
 package com.hku.toiletguide.activity;
 
 import android.app.Activity;
+import android.app.assist.AssistStructure;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.graphics.Color;
+import android.os.Build;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
+import android.view.ViewStructure;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.autofill.AutofillManager;
+import android.view.autofill.AutofillValue;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -23,8 +32,10 @@ import com.hku.toiletguide.util.UiFactory;
 
 public class LoginActivity extends Activity {
     private final MockToiletRepository repository = MockToiletRepository.getInstance();
+    private EditText nameInput;
     private EditText emailInput;
     private EditText passwordInput;
+    private boolean registerMode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,11 +122,13 @@ public class LoginActivity extends Activity {
         cardParams.setMargins(0, UiFactory.dp(this, 28), 0, 0);
         page.addView(card, cardParams);
 
-        TextView cardTitle = UiFactory.label(this, "Account login", 22, Color.WHITE, true);
+        TextView cardTitle = UiFactory.label(this, registerMode ? "Create local account" : "Account login", 22, Color.WHITE, true);
         card.addView(cardTitle);
 
         TextView accountTips = UiFactory.label(this,
-                "Student demo: hku.student@connect.hku.hk / student123\nAdmin demo: admin@hku.hk / admin123",
+                registerMode
+                        ? "Register a local account stored on this device. Demo accounts still work for quick testing."
+                        : "Student demo: hku.student@connect.hku.hk / student123\nAdmin demo: admin@hku.hk / admin123",
                 13,
                 Color.argb(220, 255, 255, 255),
                 false);
@@ -127,22 +140,60 @@ public class LoginActivity extends Activity {
         tipsParams.setMargins(0, UiFactory.dp(this, 8), 0, UiFactory.dp(this, 12));
         card.addView(accountTips, tipsParams);
 
+        if (registerMode) {
+            nameInput = input("Display name");
+            nameInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+            card.addView(nameInput, inputParams());
+        }
+
         emailInput = input("Email");
+        emailInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         emailInput.setText(repository.getCurrentUser().email);
         card.addView(emailInput, inputParams());
 
-        passwordInput = input("Password");
-        passwordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        passwordInput = new SmartPasswordInput(this);
+        passwordInput.setHint("Password");
+        passwordInput.setHintTextColor(Color.argb(190, 255, 255, 255));
+        passwordInput.setTextColor(Color.WHITE);
+        passwordInput.setSingleLine(true);
+        passwordInput.setPadding(UiFactory.dp(this, 14), 0, UiFactory.dp(this, 14), 0);
+        passwordInput.setBackground(UiFactory.roundedStroke(this, Color.argb(45, 255, 255, 255), 16, Color.argb(115, 255, 255, 255), 1));
+        passwordInput.setGravity(Gravity.CENTER_VERTICAL);
+        passwordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        passwordInput.setPrivateImeOptions("nm");
+        bindAutofillOnlyWhenEmpty(passwordInput);
         card.addView(passwordInput, inputParams());
 
-        Button loginButton = UiFactory.primaryButton(this, "Log in");
-        loginButton.setOnClickListener(v -> login());
+        Button primaryButton = UiFactory.primaryButton(this, registerMode ? "Create account" : "Log in");
+        primaryButton.setOnClickListener(v -> {
+            if (registerMode) {
+                register();
+            } else {
+                login();
+            }
+        });
         LinearLayout.LayoutParams loginParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 UiFactory.dp(this, 52)
         );
         loginParams.setMargins(0, UiFactory.dp(this, 18), 0, 0);
-        card.addView(loginButton, loginParams);
+        card.addView(primaryButton, loginParams);
+
+        Button switchModeButton = new Button(this);
+        switchModeButton.setText(registerMode ? "Back to sign in" : "Create a local account");
+        switchModeButton.setAllCaps(false);
+        switchModeButton.setTextColor(Color.WHITE);
+        switchModeButton.setBackground(UiFactory.roundedStroke(this, Color.argb(24, 255, 255, 255), 16, Color.argb(100, 255, 255, 255), 1));
+        switchModeButton.setOnClickListener(v -> {
+            registerMode = !registerMode;
+            setContentView(buildContent());
+        });
+        LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                UiFactory.dp(this, 52)
+        );
+        switchParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
+        card.addView(switchModeButton, switchParams);
 
         Button skipButton = new Button(this);
         skipButton.setText("Continue as current user");
@@ -171,6 +222,47 @@ public class LoginActivity extends Activity {
         return input;
     }
 
+    private void bindAutofillOnlyWhenEmpty(EditText input) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        AutofillManager autofillManager = getSystemService(AutofillManager.class);
+        input.setImportantForAutofill(input.getText().length() == 0
+                ? View.IMPORTANT_FOR_AUTOFILL_YES
+                : View.IMPORTANT_FOR_AUTOFILL_NO);
+        input.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                return;
+            }
+            input.setImportantForAutofill(input.getText().length() == 0
+                    ? View.IMPORTANT_FOR_AUTOFILL_YES
+                    : View.IMPORTANT_FOR_AUTOFILL_NO);
+            if (input.getText().length() > 0 && autofillManager != null) {
+                autofillManager.cancel();
+            }
+        });
+        input.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                boolean empty = s == null || s.length() == 0;
+                input.setImportantForAutofill(empty
+                        ? View.IMPORTANT_FOR_AUTOFILL_YES
+                        : View.IMPORTANT_FOR_AUTOFILL_NO);
+                if (!empty && autofillManager != null) {
+                    autofillManager.cancel();
+                }
+            }
+        });
+    }
+
     private LinearLayout.LayoutParams inputParams() {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -190,6 +282,21 @@ public class LoginActivity extends Activity {
         openMain();
     }
 
+    private void register() {
+        String displayName = nameInput == null ? "" : nameInput.getText().toString().trim();
+        String email = emailInput.getText().toString().trim();
+        String password = passwordInput.getText().toString();
+        if (displayName.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Please fill in name, email and password", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!repository.register(displayName, email, password)) {
+            Toast.makeText(this, "Registration failed: email already exists or input is invalid", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        openMain();
+    }
+
     private void openMain() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -199,5 +306,39 @@ public class LoginActivity extends Activity {
 
     private int getDrawableId(String name) {
         return getResources().getIdentifier(name, "drawable", getPackageName());
+    }
+
+    private static class SmartPasswordInput extends EditText {
+        SmartPasswordInput(Context context) {
+            super(context);
+        }
+
+        @Override
+        public void onProvideAutofillStructure(ViewStructure structure, int flags) {
+            super.onProvideAutofillStructure(structure, flags);
+            if (getText() != null && getText().length() > 0) {
+                structure.setAutofillType(AUTOFILL_TYPE_NONE);
+                return;
+            }
+            structure.setAutofillHints(new String[]{View.AUTOFILL_HINT_PASSWORD});
+        }
+
+        @Override
+        public void autofill(AutofillValue value) {
+            if (getText() != null && getText().length() > 0) {
+                return;
+            }
+            super.autofill(value);
+        }
+
+        @Override
+        public void onProvideAutofillVirtualStructure(ViewStructure structure, int flags) {
+            super.onProvideAutofillVirtualStructure(structure, flags);
+        }
+
+        @Override
+        public void getFocusedRect(Rect r) {
+            super.getFocusedRect(r);
+        }
     }
 }
