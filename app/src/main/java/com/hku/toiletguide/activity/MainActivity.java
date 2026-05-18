@@ -93,7 +93,11 @@ public class MainActivity extends Activity {
                 UiFactory.dp(this, 56)
         ));
 
-        TextView subtitle = UiFactory.label(this, "Find clean, quiet campus toilets faster", 14, Color.argb(220, 255, 255, 255), false);
+        TextView subtitle = UiFactory.label(this,
+                "Find clean, quiet campus toilets faster · " + repository.getCurrentUser().displayName,
+                14,
+                Color.argb(220, 255, 255, 255),
+                false);
         subtitle.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,

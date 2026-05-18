@@ -1,6 +1,7 @@
 package com.hku.toiletguide.activity;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -12,11 +13,14 @@ import android.widget.TextView;
 
 import com.hku.toiletguide.R;
 import com.hku.toiletguide.data.MockToiletRepository;
+import com.hku.toiletguide.model.ContentSubmission;
 import com.hku.toiletguide.model.Toilet;
 import com.hku.toiletguide.model.User;
 import com.hku.toiletguide.util.UiFactory;
 
 public class ProfileActivity extends Activity {
+    private final MockToiletRepository repository = MockToiletRepository.getInstance();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,7 +35,7 @@ public class ProfileActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(0, UiFactory.dp(this, 16), 0, UiFactory.dp(this, 20));
-        User currentUser = MockToiletRepository.getInstance().getCurrentUser();
+        User currentUser = repository.getCurrentUser();
 
         ImageView avatar = new ImageView(this);
         avatar.setImageResource(R.drawable.ic_user);
@@ -55,22 +59,41 @@ public class ProfileActivity extends Activity {
         ));
 
         int reviewed = 0;
-        for (Toilet toilet : MockToiletRepository.getInstance().getToilets()) {
+        for (Toilet toilet : repository.getToilets()) {
             reviewed += toilet.reviews.size();
         }
 
-        page.addView(menuRow(R.drawable.ic_favorite, "My favorites", "Saved toilets", UiFactory.PINK));
-        page.addView(menuRow(R.drawable.ic_comment, "My reviews", reviewed + " reviews in demo data", Color.rgb(74, 134, 230)));
-        page.addView(menuRow(R.drawable.ic_toilet, "My submissions", "Submitted toilets and issue reports", UiFactory.DARK_GREEN));
-        page.addView(menuRow(R.drawable.ic_admin, "Admin review center", "Visible only for admin accounts later", Color.rgb(245, 179, 53)));
-        page.addView(menuRow(R.drawable.ic_logout, "Log out", "Return to login page later", UiFactory.MUTED));
+        int pendingSubmissions = 0;
+        for (ContentSubmission submission : repository.getContentSubmissions()) {
+            if (currentUser.id.equals(submission.userId) && submission.isPending()) {
+                pendingSubmissions++;
+            }
+        }
+
+        page.addView(menuRow(R.drawable.ic_favorite, "My favorites", "Saved toilets", UiFactory.PINK, null));
+        page.addView(menuRow(R.drawable.ic_comment, "Approved reviews", reviewed + " visible reviews in demo data", Color.rgb(74, 134, 230), null));
+        page.addView(menuRow(R.drawable.ic_toilet, "My submissions", pendingSubmissions + " pending content items", UiFactory.DARK_GREEN, null));
+        if ("admin".equals(currentUser.role)) {
+            page.addView(menuRow(R.drawable.ic_admin, "Admin console", "Moderate content and resolve live statuses", Color.rgb(245, 179, 53),
+                    v -> startActivity(new Intent(this, AdminActivity.class))));
+        }
+        page.addView(menuRow(R.drawable.ic_logout, "Log out", "Back to login page", UiFactory.MUTED, v -> {
+            repository.logout();
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            finish();
+        }));
         return page;
     }
 
-    private LinearLayout menuRow(int iconRes, String title, String subtitle, int color) {
+    private LinearLayout menuRow(int iconRes, String title, String subtitle, int color, View.OnClickListener listener) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0, UiFactory.dp(this, 12), 0, UiFactory.dp(this, 12));
+        if (listener != null) {
+            row.setOnClickListener(listener);
+        }
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);

@@ -11,6 +11,7 @@ public class Toilet {
     public double latitude;
     public double longitude;
     public boolean accessible;
+    public boolean hasSoap;
     public boolean hasDryer;
     public boolean hasTissue;
     public boolean hasMirror;
@@ -32,6 +33,7 @@ public class Toilet {
             double latitude,
             double longitude,
             boolean accessible,
+            boolean hasSoap,
             boolean hasDryer,
             boolean hasTissue,
             boolean hasMirror,
@@ -50,6 +52,7 @@ public class Toilet {
         this.latitude = latitude;
         this.longitude = longitude;
         this.accessible = accessible;
+        this.hasSoap = hasSoap;
         this.hasDryer = hasDryer;
         this.hasTissue = hasTissue;
         this.hasMirror = hasMirror;
@@ -97,6 +100,9 @@ public class Toilet {
         }
         if (hasDryer) {
             labels.add("Dryer");
+        }
+        if (hasSoap) {
+            labels.add("Soap");
         }
         if (hasTissue) {
             labels.add("Tissue");

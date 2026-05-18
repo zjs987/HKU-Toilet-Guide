@@ -12,6 +12,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -20,10 +21,14 @@ import android.widget.Toast;
 
 import com.hku.toiletguide.R;
 import com.hku.toiletguide.data.MockToiletRepository;
+import com.hku.toiletguide.model.ContentSubmission;
+import com.hku.toiletguide.model.LiveStatusReport;
 import com.hku.toiletguide.model.Review;
 import com.hku.toiletguide.model.Toilet;
 import com.hku.toiletguide.util.DistanceUtil;
 import com.hku.toiletguide.util.UiFactory;
+
+import java.util.List;
 
 public class DetailActivity extends Activity {
     public static final String EXTRA_TOILET_ID = "toilet_id";
@@ -256,6 +261,8 @@ public class DetailActivity extends Activity {
         stats.addView(crowdStatCard(toilet));
         stats.addView(statCard("Open", toilet.openingHours, Color.rgb(74, 134, 230)));
         stats.addView(statCard("Rating", String.format("%.1f", toilet.avgOverall), Color.rgb(245, 179, 53)));
+        section.addView(liveStatusSection(toilet));
+        section.addView(reportActions(toilet));
         return section;
     }
 
@@ -298,6 +305,132 @@ public class DetailActivity extends Activity {
         });
         row.addView(review, new LinearLayout.LayoutParams(
                 UiFactory.dp(this, 132),
+                UiFactory.dp(this, 48)
+        ));
+        return row;
+    }
+
+    private LinearLayout liveStatusSection(Toilet toilet) {
+        LinearLayout block = new LinearLayout(this);
+        block.setOrientation(LinearLayout.VERTICAL);
+        block.setBackground(UiFactory.rounded(this, Color.rgb(247, 249, 250), 12));
+        block.setPadding(UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, UiFactory.dp(this, 16), 0, 0);
+        block.setLayoutParams(params);
+
+        block.addView(UiFactory.label(this, "Current Live Status", 17, UiFactory.TEXT, true));
+        List<LiveStatusReport> statuses = repository.getLatestActiveStatuses(toilet.id);
+        HorizontalScrollView chipsScroll = new HorizontalScrollView(this);
+        chipsScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout.LayoutParams chipsScrollParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        chipsScrollParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
+        block.addView(chipsScroll, chipsScrollParams);
+
+        LinearLayout chipsRow = new LinearLayout(this);
+        chipsRow.setOrientation(LinearLayout.HORIZONTAL);
+        chipsRow.setGravity(Gravity.CENTER_VERTICAL);
+        chipsScroll.addView(chipsRow, new HorizontalScrollView.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        chipsRow.addView(statusChip(latestForGroup(statuses, LiveStatusReport.GROUP_TISSUE, defaultStatusForToilet(LiveStatusReport.GROUP_TISSUE, toilet))));
+        chipsRow.addView(statusChip(latestForGroup(statuses, LiveStatusReport.GROUP_SOAP, defaultStatusForToilet(LiveStatusReport.GROUP_SOAP, toilet))));
+        chipsRow.addView(statusChip(latestForGroup(statuses, LiveStatusReport.GROUP_DRYER, defaultStatusForToilet(LiveStatusReport.GROUP_DRYER, toilet))));
+        chipsRow.addView(statusChip(latestForGroup(statuses, LiveStatusReport.GROUP_OPERATION, defaultStatusForToilet(LiveStatusReport.GROUP_OPERATION, toilet))));
+
+        if (statuses.isEmpty()) {
+            return block;
+        }
+
+        TextView caption = UiFactory.label(this, "Latest active reports", 13, UiFactory.MUTED, true);
+        LinearLayout.LayoutParams captionParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        captionParams.setMargins(0, UiFactory.dp(this, 12), 0, 0);
+        block.addView(caption, captionParams);
+        for (LiveStatusReport report : statuses) {
+            TextView item = UiFactory.label(this,
+                    LiveStatusReport.groupLabel(report.group()) + ": " + report.label() + " · " + report.userName,
+                    14,
+                    UiFactory.TEXT,
+                    false);
+            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            itemParams.setMargins(0, UiFactory.dp(this, 8), 0, 0);
+            block.addView(item, itemParams);
+        }
+        return block;
+    }
+
+    private LiveStatusReport latestForGroup(List<LiveStatusReport> statuses, String group, String fallbackStatusCode) {
+        for (LiveStatusReport report : statuses) {
+            if (group.equals(report.group())) {
+                return report;
+            }
+        }
+        return new LiveStatusReport("fallback_" + group, toiletId, "", "System", fallbackStatusCode, 0L);
+    }
+
+    private String defaultStatusForToilet(String group, Toilet toilet) {
+        if (LiveStatusReport.GROUP_TISSUE.equals(group)) {
+            return toilet.hasTissue ? LiveStatusReport.STATUS_TISSUE_OK : LiveStatusReport.STATUS_TISSUE_LOW;
+        }
+        if (LiveStatusReport.GROUP_SOAP.equals(group)) {
+            return toilet.hasSoap ? LiveStatusReport.STATUS_SOAP_OK : LiveStatusReport.STATUS_SOAP_LOW;
+        }
+        if (LiveStatusReport.GROUP_DRYER.equals(group)) {
+            return toilet.hasDryer ? LiveStatusReport.STATUS_DRYER_OK : LiveStatusReport.STATUS_DRYER_BROKEN;
+        }
+        return LiveStatusReport.STATUS_OPEN;
+    }
+
+    private TextView statusChip(LiveStatusReport report) {
+        TextView chip = UiFactory.label(this,
+                LiveStatusReport.titleFor(report.statusCode) + "  " + LiveStatusReport.shortLabelFor(report.statusCode),
+                12,
+                LiveStatusReport.textColorFor(report.statusCode),
+                true);
+        chip.setGravity(Gravity.CENTER);
+        chip.setPadding(UiFactory.dp(this, 12), UiFactory.dp(this, 8), UiFactory.dp(this, 12), UiFactory.dp(this, 8));
+        chip.setBackground(UiFactory.rounded(this, LiveStatusReport.colorFor(report.statusCode), 18));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                0f
+        );
+        params.setMargins(0, 0, UiFactory.dp(this, 8), 0);
+        chip.setLayoutParams(params);
+        return chip;
+    }
+
+    private LinearLayout reportActions(Toilet toilet) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, UiFactory.dp(this, 14), 0, 0);
+        row.setLayoutParams(params);
+        Button status = UiFactory.primaryButton(this, "Report status");
+        status.setOnClickListener(v -> {
+            Intent intent = new Intent(this, StatusReportActivity.class);
+            intent.putExtra(EXTRA_TOILET_ID, toilet.id);
+            startActivity(intent);
+        });
+        row.addView(status, new LinearLayout.LayoutParams(
+                UiFactory.dp(this, 148),
                 UiFactory.dp(this, 48)
         ));
         return row;
