@@ -36,8 +36,16 @@ public class Review {
         }
     }
 
+    public void restoreLikedBy(String userId) {
+        likedUserIds.add(userId);
+    }
+
     public boolean isLikedBy(String userId) {
         return likedUserIds.contains(userId);
+    }
+
+    public Set<String> likedUserIds() {
+        return new HashSet<>(likedUserIds);
     }
 
     public void toggleLike(String userId) {

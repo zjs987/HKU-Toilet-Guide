@@ -49,13 +49,13 @@ public class UiFactory {
     }
 
     public static Drawable frostedPanel(Context context, int radiusDp) {
-        GradientDrawable fill = rounded(context, Color.argb(150, 255, 255, 255), radiusDp);
-        GradientDrawable stroke = roundedStroke(context, Color.TRANSPARENT, radiusDp, Color.argb(140, 255, 255, 255), 1);
+        GradientDrawable fill = rounded(context, Color.argb(138, 5, 17, 25), radiusDp);
+        GradientDrawable stroke = roundedStroke(context, Color.TRANSPARENT, radiusDp, Color.argb(92, 255, 255, 255), 1);
         return new LayerDrawable(new Drawable[]{fill, stroke});
     }
 
     public static Drawable darkOverlayPanel(Context context, int radiusDp) {
-        GradientDrawable fill = rounded(context, Color.argb(130, 14, 24, 34), radiusDp);
+        GradientDrawable fill = rounded(context, Color.argb(160, 5, 17, 25), radiusDp);
         GradientDrawable stroke = roundedStroke(context, Color.TRANSPARENT, radiusDp, Color.argb(90, 255, 255, 255), 1);
         return new LayerDrawable(new Drawable[]{fill, stroke});
     }

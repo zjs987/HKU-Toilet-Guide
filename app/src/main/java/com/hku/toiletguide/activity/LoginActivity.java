@@ -157,7 +157,7 @@ public class LoginActivity extends Activity {
         passwordInput.setTextColor(Color.WHITE);
         passwordInput.setSingleLine(true);
         passwordInput.setPadding(UiFactory.dp(this, 14), 0, UiFactory.dp(this, 14), 0);
-        passwordInput.setBackground(UiFactory.roundedStroke(this, Color.argb(45, 255, 255, 255), 16, Color.argb(115, 255, 255, 255), 1));
+        passwordInput.setBackground(UiFactory.roundedStroke(this, Color.argb(96, 5, 17, 25), 16, Color.argb(105, 255, 255, 255), 1));
         passwordInput.setGravity(Gravity.CENTER_VERTICAL);
         passwordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         passwordInput.setPrivateImeOptions("nm");
@@ -183,7 +183,7 @@ public class LoginActivity extends Activity {
         switchModeButton.setText(registerMode ? "Back to sign in" : "Create a local account");
         switchModeButton.setAllCaps(false);
         switchModeButton.setTextColor(Color.WHITE);
-        switchModeButton.setBackground(UiFactory.roundedStroke(this, Color.argb(24, 255, 255, 255), 16, Color.argb(100, 255, 255, 255), 1));
+        switchModeButton.setBackground(UiFactory.roundedStroke(this, Color.argb(82, 5, 17, 25), 16, Color.argb(100, 255, 255, 255), 1));
         switchModeButton.setOnClickListener(v -> {
             registerMode = !registerMode;
             setContentView(buildContent());
@@ -199,7 +199,7 @@ public class LoginActivity extends Activity {
         skipButton.setText("Continue as current user");
         skipButton.setAllCaps(false);
         skipButton.setTextColor(Color.WHITE);
-        skipButton.setBackground(UiFactory.roundedStroke(this, Color.argb(40, 255, 255, 255), 16, Color.argb(120, 255, 255, 255), 1));
+        skipButton.setBackground(UiFactory.roundedStroke(this, Color.argb(90, 5, 17, 25), 16, Color.argb(115, 255, 255, 255), 1));
         skipButton.setOnClickListener(v -> openMain());
         LinearLayout.LayoutParams skipParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -217,7 +217,7 @@ public class LoginActivity extends Activity {
         input.setTextColor(Color.WHITE);
         input.setSingleLine(true);
         input.setPadding(UiFactory.dp(this, 14), 0, UiFactory.dp(this, 14), 0);
-        input.setBackground(UiFactory.roundedStroke(this, Color.argb(45, 255, 255, 255), 16, Color.argb(115, 255, 255, 255), 1));
+        input.setBackground(UiFactory.roundedStroke(this, Color.argb(96, 5, 17, 25), 16, Color.argb(105, 255, 255, 255), 1));
         input.setGravity(Gravity.CENTER_VERTICAL);
         return input;
     }

@@ -2,11 +2,9 @@ package com.hku.toiletguide.activity;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -16,6 +14,7 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RatingBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -141,7 +140,7 @@ public class DetailActivity extends Activity {
     private TextView iconButton(String text) {
         TextView view = UiFactory.label(this, text, 12, Color.WHITE, true);
         view.setGravity(Gravity.CENTER);
-        view.setBackground(UiFactory.roundedStroke(this, Color.argb(40, 255, 255, 255), 18, Color.argb(110, 255, 255, 255), 1));
+        view.setBackground(UiFactory.roundedStroke(this, Color.argb(86, 5, 17, 25), 18, Color.argb(100, 255, 255, 255), 1));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(UiFactory.dp(this, 54), UiFactory.dp(this, 38));
         params.setMargins(UiFactory.dp(this, 6), 0, 0, 0);
         view.setLayoutParams(params);
@@ -188,7 +187,7 @@ public class DetailActivity extends Activity {
                 false);
         locationRow.addView(address, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        Button navigate = UiFactory.primaryButton(this, "Start");
+        Button navigate = UiFactory.primaryButton(this, "Go");
         navigate.setTypeface(Typeface.DEFAULT_BOLD);
         navigate.setOnClickListener(v -> navigateTo(toilet));
         locationRow.addView(navigate, new LinearLayout.LayoutParams(UiFactory.dp(this, 104), UiFactory.dp(this, 46)));
@@ -204,7 +203,7 @@ public class DetailActivity extends Activity {
         favoriteIcon.setPadding(UiFactory.dp(this, 9), UiFactory.dp(this, 9), UiFactory.dp(this, 9), UiFactory.dp(this, 9));
         favoriteIcon.setBackground(favorite
                 ? UiFactory.rounded(this, Color.argb(170, 253, 232, 241), 23)
-                : UiFactory.roundedStroke(this, Color.argb(40, 255, 255, 255), 23, Color.argb(110, 255, 255, 255), 1));
+                : UiFactory.roundedStroke(this, Color.argb(86, 5, 17, 25), 23, Color.argb(100, 255, 255, 255), 1));
         favoriteIcon.setOnClickListener(v -> {
             repository.toggleFavorite(toilet.id);
             Toast.makeText(this, repository.isFavorite(toilet.id) ? "Added to favorites" : "Removed from favorites", Toast.LENGTH_SHORT).show();
@@ -257,7 +256,7 @@ public class DetailActivity extends Activity {
     private TextView tag(String text) {
         TextView tag = UiFactory.label(this, text, 12, Color.WHITE, true);
         tag.setGravity(Gravity.CENTER);
-        tag.setBackground(UiFactory.rounded(this, Color.argb(100, 255, 255, 255), 14));
+        tag.setBackground(UiFactory.roundedStroke(this, Color.argb(102, 5, 17, 25), 14, Color.argb(70, 255, 255, 255), 1));
         tag.setPadding(UiFactory.dp(this, 10), 0, UiFactory.dp(this, 10), 0);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -282,8 +281,8 @@ public class DetailActivity extends Activity {
         TextView view = UiFactory.label(this, text, 17, Color.WHITE, true);
         view.setGravity(Gravity.CENTER);
         view.setBackground(active
-                ? UiFactory.rounded(this, Color.argb(120, 255, 255, 255), 20)
-                : UiFactory.rounded(this, Color.argb(40, 255, 255, 255), 20));
+                ? UiFactory.rounded(this, Color.argb(150, 0, 126, 111), 20)
+                : UiFactory.roundedStroke(this, Color.argb(70, 5, 17, 25), 20, Color.argb(55, 255, 255, 255), 1));
         view.setOnClickListener(v -> {
             selectedTab = tabIndex;
             setContentView(buildContent());
@@ -300,6 +299,21 @@ public class DetailActivity extends Activity {
         TextView note = UiFactory.label(this, toilet.note, 17, Color.WHITE, false);
         note.setLineSpacing(UiFactory.dp(this, 5), 1f);
         section.addView(note);
+
+        LinearLayout scorePanel = new LinearLayout(this);
+        scorePanel.setOrientation(LinearLayout.VERTICAL);
+        scorePanel.setPadding(UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12));
+        scorePanel.setBackground(UiFactory.rounded(this, Color.argb(92, 5, 17, 25), 12));
+        LinearLayout.LayoutParams scoreParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        scoreParams.setMargins(0, UiFactory.dp(this, 14), 0, 0);
+        section.addView(scorePanel, scoreParams);
+
+        scorePanel.addView(ratingRow("Cleanliness", toilet.avgCleanliness));
+        scorePanel.addView(ratingRow("Quietness", quietnessScore(toilet.avgCrowdedness)));
+        scorePanel.addView(ratingRow("Overall", toilet.avgOverall));
 
         LinearLayout stats = new LinearLayout(this);
         stats.setOrientation(LinearLayout.HORIZONTAL);
@@ -365,7 +379,7 @@ public class DetailActivity extends Activity {
     private LinearLayout liveStatusSection(Toilet toilet) {
         LinearLayout block = new LinearLayout(this);
         block.setOrientation(LinearLayout.VERTICAL);
-        block.setBackground(UiFactory.rounded(this, Color.argb(70, 255, 255, 255), 12));
+        block.setBackground(UiFactory.rounded(this, Color.argb(92, 5, 17, 25), 12));
         block.setPadding(UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -475,17 +489,44 @@ public class DetailActivity extends Activity {
         );
         params.setMargins(0, UiFactory.dp(this, 14), 0, 0);
         row.setLayoutParams(params);
+
+        Button crowd = UiFactory.primaryButton(this, "Report crowd");
+        crowd.setOnClickListener(v -> showCrowdDialog(toilet));
+        LinearLayout.LayoutParams crowdParams = new LinearLayout.LayoutParams(
+                0,
+                UiFactory.dp(this, 48),
+                1f
+        );
+        crowdParams.setMargins(0, 0, UiFactory.dp(this, 8), 0);
+        row.addView(crowd, crowdParams);
+
         Button status = UiFactory.primaryButton(this, "Report status");
         status.setOnClickListener(v -> {
             Intent intent = new Intent(this, StatusReportActivity.class);
             intent.putExtra(EXTRA_TOILET_ID, toilet.id);
             startActivity(intent);
         });
-        row.addView(status, new LinearLayout.LayoutParams(
-                UiFactory.dp(this, 148),
-                UiFactory.dp(this, 48)
-        ));
+        row.addView(status, new LinearLayout.LayoutParams(0, UiFactory.dp(this, 48), 1f));
         return row;
+    }
+
+    private void showCrowdDialog(Toilet toilet) {
+        String[] labels = {
+                "Empty - no queue",
+                "Not crowded - a few people",
+                "Normal - usable",
+                "Crowded - short wait",
+                "Full - long queue"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("How crowded is it now?")
+                .setSingleChoiceItems(labels, toilet.currentCrowdLevel - 1, (dialog, which) -> {
+                    repository.reportCrowdLevel(toilet.id, which + 1);
+                    Toast.makeText(this, "Crowd level updated", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    setContentView(buildContent());
+                })
+                .show();
     }
 
     private LinearLayout section(String title) {
@@ -517,7 +558,7 @@ public class DetailActivity extends Activity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
         card.setPadding(UiFactory.dp(this, 8), UiFactory.dp(this, 10), UiFactory.dp(this, 8), UiFactory.dp(this, 10));
-        card.setBackground(UiFactory.rounded(this, Color.argb(70, 255, 255, 255), 10));
+        card.setBackground(UiFactory.rounded(this, Color.argb(92, 5, 17, 25), 10));
 
         TextView valueView = UiFactory.label(this, value, 14, color, true);
         valueView.setGravity(Gravity.CENTER);
@@ -537,7 +578,7 @@ public class DetailActivity extends Activity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
         card.setPadding(UiFactory.dp(this, 8), UiFactory.dp(this, 10), UiFactory.dp(this, 8), UiFactory.dp(this, 10));
-        card.setBackground(UiFactory.rounded(this, Color.argb(70, 255, 255, 255), 10));
+        card.setBackground(UiFactory.rounded(this, Color.argb(92, 5, 17, 25), 10));
 
         LinearLayout people = crowdPeople(toilet.currentCrowdLevel, UiFactory.dp(this, 16));
         people.setGravity(Gravity.CENTER);
@@ -588,7 +629,7 @@ public class DetailActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(UiFactory.dp(this, 14), UiFactory.dp(this, 14), UiFactory.dp(this, 14), UiFactory.dp(this, 14));
-        card.setBackground(UiFactory.rounded(this, Color.argb(70, 255, 255, 255), 10));
+        card.setBackground(UiFactory.rounded(this, Color.argb(92, 5, 17, 25), 10));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -602,11 +643,19 @@ public class DetailActivity extends Activity {
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         header.addView(likeView(review));
         card.addView(header);
-        card.addView(UiFactory.label(this,
-                "Clean " + review.cleanliness + "/5 | Crowd " + review.crowdedness + "/5 | Overall " + review.overall + "/5",
-                15,
-                Color.WHITE,
-                true));
+
+        LinearLayout ratings = new LinearLayout(this);
+        ratings.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams ratingParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        ratingParams.setMargins(0, UiFactory.dp(this, 8), 0, 0);
+        card.addView(ratings, ratingParams);
+        ratings.addView(ratingRow("Clean", review.cleanliness));
+        ratings.addView(ratingRow("Quiet", quietnessScore(review.crowdedness)));
+        ratings.addView(ratingRow("Overall", review.overall));
+
         TextView comment = UiFactory.label(this, review.comment, 15, Color.WHITE, false);
         LinearLayout.LayoutParams commentParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -617,6 +666,40 @@ public class DetailActivity extends Activity {
         return card;
     }
 
+    private LinearLayout ratingRow(String label, double rating) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, UiFactory.dp(this, 3), 0, UiFactory.dp(this, 3));
+
+        TextView name = UiFactory.label(this, label, 13, Color.argb(220, 255, 255, 255), true);
+        name.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(name, new LinearLayout.LayoutParams(UiFactory.dp(this, 86), UiFactory.dp(this, 30)));
+
+        RatingBar stars = new RatingBar(this, null, android.R.attr.ratingBarStyleSmall);
+        stars.setNumStars(5);
+        stars.setStepSize(1f);
+        stars.setRating((float) roundedWholeRating(rating));
+        stars.setIsIndicator(true);
+        row.addView(stars, new LinearLayout.LayoutParams(UiFactory.dp(this, 118), UiFactory.dp(this, 32)));
+
+        TextView score = UiFactory.label(this, String.valueOf(roundedWholeRating(rating)), 13, Color.WHITE, true);
+        score.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        row.addView(score, new LinearLayout.LayoutParams(0, UiFactory.dp(this, 30), 1f));
+        return row;
+    }
+
+    private double quietnessScore(double crowdScore) {
+        return Math.max(1, Math.min(5, 6 - crowdScore));
+    }
+
+    private double roundHalf(double value) {
+        return Math.round(value * 2.0) / 2.0;
+    }
+
+    private int roundedWholeRating(double value) {
+        return Math.max(1, Math.min(5, (int) Math.round(value)));
+    }
+
     private LinearLayout likeView(Review review) {
         boolean liked = review.isLikedBy(repository.getCurrentUser().id);
         LinearLayout like = new LinearLayout(this);
@@ -624,7 +707,7 @@ public class DetailActivity extends Activity {
         like.setPadding(UiFactory.dp(this, 8), 0, UiFactory.dp(this, 8), 0);
         like.setBackground(liked
                 ? UiFactory.rounded(this, Color.argb(160, 253, 232, 241), 16)
-                : UiFactory.roundedStroke(this, Color.argb(30, 255, 255, 255), 16, Color.argb(110, 255, 255, 255), 1));
+                : UiFactory.roundedStroke(this, Color.argb(76, 5, 17, 25), 16, Color.argb(100, 255, 255, 255), 1));
         like.setOnClickListener(v -> {
             repository.toggleReviewLike(toiletId, review.id);
             setContentView(buildContent());
@@ -663,16 +746,11 @@ public class DetailActivity extends Activity {
     }
 
     private void navigateTo(Toilet toilet) {
-        Uri uri = Uri.parse("google.navigation:q=" + toilet.latitude + "," + toilet.longitude + "&mode=w");
-        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-        intent.setPackage("com.google.android.apps.maps");
-        try {
-            startActivity(intent);
-        } catch (ActivityNotFoundException error) {
-            Intent fallback = new Intent(Intent.ACTION_VIEW,
-                    Uri.parse("https://www.google.com/maps/search/?api=1&query=" + toilet.latitude + "," + toilet.longitude));
-            startActivity(fallback);
-        }
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(MainActivity.EXTRA_TAB, MainActivity.TAB_MAP_INDEX);
+        intent.putExtra(MainActivity.EXTRA_FOCUS_TOILET_ID, toilet.id);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
     }
 
     private int getDrawableId(String name) {

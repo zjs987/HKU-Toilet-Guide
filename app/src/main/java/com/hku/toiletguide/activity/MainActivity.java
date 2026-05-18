@@ -6,18 +6,30 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.hku.toiletguide.R;
 import com.hku.toiletguide.data.MockToiletRepository;
 import com.hku.toiletguide.model.ContentSubmission;
@@ -34,9 +46,11 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
     public static final String EXTRA_TAB = "extra_tab";
+    public static final String EXTRA_FOCUS_TOILET_ID = "extra_focus_toilet_id";
+    public static final int TAB_MAP_INDEX = 1;
 
     private static final int TAB_HOME = 0;
-    private static final int TAB_MAP = 1;
+    private static final int TAB_MAP = TAB_MAP_INDEX;
     private static final int TAB_RANKING = 2;
     private static final int TAB_MINE = 3;
 
@@ -47,12 +61,21 @@ public class MainActivity extends Activity {
     private boolean requireTissue;
     private boolean requireDryer;
     private int sortMode;
+    private String searchQuery = "";
     private int currentTab = TAB_HOME;
+    private MapView mapView;
+    private Bundle mapViewState;
+    private String focusedMapToiletId;
+    private LinearLayout homePage;
+    private View homeListPanelView;
+    private boolean activityResumed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mapViewState = savedInstanceState;
         currentTab = normalizeTab(getIntent().getIntExtra(EXTRA_TAB, TAB_HOME));
+        focusedMapToiletId = getIntent().getStringExtra(EXTRA_FOCUS_TOILET_ID);
         setContentView(buildContent());
     }
 
@@ -60,8 +83,42 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        destroyMapView();
         currentTab = normalizeTab(intent.getIntExtra(EXTRA_TAB, TAB_HOME));
+        focusedMapToiletId = intent.getStringExtra(EXTRA_FOCUS_TOILET_ID);
         setContentView(buildContent());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        activityResumed = true;
+        if (mapView != null) {
+            mapView.onResume();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        activityResumed = false;
+        if (mapView != null) {
+            mapView.onPause();
+        }
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        destroyMapView();
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (mapView != null) {
+            mapView.onSaveInstanceState(outState);
+        }
     }
 
     private LinearLayout buildContent() {
@@ -128,13 +185,15 @@ public class MainActivity extends Activity {
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
+        homePage = page;
         scrollView.addView(page, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
 
         page.addView(buildHomeHero());
-        page.addView(buildHomeListPanel());
+        homeListPanelView = buildHomeListPanel();
+        page.addView(homeListPanelView);
         return scrollView;
     }
 
@@ -181,7 +240,11 @@ public class MainActivity extends Activity {
         search.setOrientation(LinearLayout.HORIZONTAL);
         search.setGravity(Gravity.CENTER_VERTICAL);
         search.setPadding(UiFactory.dp(this, 18), 0, UiFactory.dp(this, 8), 0);
-        search.setBackground(UiFactory.frostedPanel(this, 30));
+        search.setBackground(UiFactory.roundedStroke(this,
+                Color.argb(118, 4, 14, 22),
+                30,
+                Color.argb(105, 255, 255, 255),
+                1));
         search.setElevation(UiFactory.dp(this, 4));
 
         ImageView searchIcon = new ImageView(this);
@@ -189,8 +252,31 @@ public class MainActivity extends Activity {
         searchIcon.setColorFilter(Color.WHITE);
         search.addView(searchIcon, new LinearLayout.LayoutParams(UiFactory.dp(this, 30), UiFactory.dp(this, 30)));
 
-        TextView searchText = UiFactory.label(this, "Search building", 17, Color.argb(205, 255, 255, 255), false);
+        EditText searchText = new EditText(this);
+        searchText.setText(searchQuery);
+        searchText.setHint("Search building, floor, facility");
+        searchText.setHintTextColor(Color.argb(170, 255, 255, 255));
+        searchText.setTextColor(Color.WHITE);
+        searchText.setTextSize(16);
+        searchText.setSingleLine(true);
         searchText.setGravity(Gravity.CENTER_VERTICAL);
+        searchText.setPadding(0, 0, 0, 0);
+        searchText.setBackgroundColor(Color.TRANSPARENT);
+        searchText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                searchQuery = s == null ? "" : s.toString();
+                refreshHomeList();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
         LinearLayout.LayoutParams searchTextParams = new LinearLayout.LayoutParams(0, UiFactory.dp(this, 58), 1f);
         searchTextParams.setMargins(UiFactory.dp(this, 12), 0, 0, 0);
         search.addView(searchText, searchTextParams);
@@ -201,8 +287,8 @@ public class MainActivity extends Activity {
         advanced.setAllCaps(false);
         advanced.setTypeface(Typeface.DEFAULT_BOLD);
         advanced.setGravity(Gravity.CENTER);
-        advanced.setBackground(UiFactory.roundedStroke(this, Color.argb(45, 255, 255, 255), 24, Color.argb(120, 255, 255, 255), 1));
-        advanced.setOnClickListener(v -> showSortDialog());
+        advanced.setBackground(UiFactory.roundedStroke(this, Color.argb(135, 5, 17, 25), 24, Color.argb(95, 255, 255, 255), 1));
+        advanced.setOnClickListener(v -> showAdvancedFilterDialog());
         search.addView(advanced, new LinearLayout.LayoutParams(
                 UiFactory.dp(this, 108),
                 UiFactory.dp(this, 46)
@@ -215,7 +301,11 @@ public class MainActivity extends Activity {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(UiFactory.dp(this, 18), UiFactory.dp(this, 14), UiFactory.dp(this, 18), UiFactory.dp(this, 18));
-        panel.setBackground(UiFactory.frostedPanel(this, 28));
+        panel.setBackground(UiFactory.roundedStroke(this,
+                Color.argb(122, 4, 14, 22),
+                28,
+                Color.argb(90, 255, 255, 255),
+                1));
 
         panel.addView(buildPanelHandle());
         panel.addView(buildFilterBar());
@@ -238,50 +328,70 @@ public class MainActivity extends Activity {
         return panel;
     }
 
+    private void refreshHomeList() {
+        if (homePage == null || homeListPanelView == null) {
+            return;
+        }
+        int index = homePage.indexOfChild(homeListPanelView);
+        if (index < 0) {
+            return;
+        }
+        homePage.removeView(homeListPanelView);
+        homeListPanelView = buildHomeListPanel();
+        homePage.addView(homeListPanelView, index);
+    }
+
     private View buildMapTab() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiFactory.dp(this, 20), UiFactory.dp(this, 34), UiFactory.dp(this, 20), UiFactory.dp(this, 26));
-
-        root.addView(buildBrandRow());
-
-        TextView eyebrow = UiFactory.label(this, "MAP VIEW", 12, Color.argb(220, 255, 255, 255), false);
-        eyebrow.setLetterSpacing(0.24f);
-        LinearLayout.LayoutParams eyebrowParams = new LinearLayout.LayoutParams(
+        FrameLayout root = new FrameLayout(this);
+        root.addView(mapPanel(), new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        eyebrowParams.setMargins(0, UiFactory.dp(this, 28), 0, 0);
-        root.addView(eyebrow, eyebrowParams);
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
 
-        TextView title = UiFactory.label(this, "Campus map overview", 29, Color.WHITE, true);
-        title.setLineSpacing(UiFactory.dp(this, 5), 1f);
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(UiFactory.dp(this, 18), UiFactory.dp(this, 16), UiFactory.dp(this, 18), UiFactory.dp(this, 15));
+        header.setBackground(UiFactory.roundedStroke(this,
+                Color.argb(238, 5, 17, 25),
+                22,
+                Color.argb(120, 77, 105, 113),
+                1));
+        header.setElevation(UiFactory.dp(this, 8));
+
+        TextView eyebrow = UiFactory.label(this, "MAP VIEW", 11, Color.rgb(230, 176, 58), true);
+        eyebrow.setLetterSpacing(0.24f);
+        eyebrow.setShadowLayer(UiFactory.dp(this, 2), 0, UiFactory.dp(this, 1), Color.argb(180, 0, 0, 0));
+        header.addView(eyebrow);
+
+        TextView title = UiFactory.label(this, "Campus map overview", 23, Color.WHITE, true);
         title.setIncludeFontPadding(false);
+        title.setShadowLayer(UiFactory.dp(this, 3), 0, UiFactory.dp(this, 1), Color.argb(210, 0, 0, 0));
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        titleParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
-        root.addView(title, titleParams);
+        titleParams.setMargins(0, UiFactory.dp(this, 8), 0, 0);
+        header.addView(title, titleParams);
 
         TextView subtitle = UiFactory.label(this,
-                "This stays inside the same main shell now. Later you can swap the placeholder for a real Google map.",
-                15,
-                Color.argb(220, 255, 255, 255),
+                "Tap a marker, then tap the info window for details.",
+                13,
+                Color.rgb(230, 242, 240),
                 false);
-        subtitle.setLineSpacing(UiFactory.dp(this, 4), 1f);
+        subtitle.setShadowLayer(UiFactory.dp(this, 2), 0, UiFactory.dp(this, 1), Color.argb(190, 0, 0, 0));
         LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        subtitleParams.setMargins(0, UiFactory.dp(this, 10), 0, UiFactory.dp(this, 20));
-        root.addView(subtitle, subtitleParams);
+        subtitleParams.setMargins(0, UiFactory.dp(this, 6), 0, 0);
+        header.addView(subtitle, subtitleParams);
 
-        root.addView(mapPlaceholder(), new LinearLayout.LayoutParams(
+        FrameLayout.LayoutParams headerParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-        ));
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        headerParams.setMargins(UiFactory.dp(this, 16), UiFactory.dp(this, 20), UiFactory.dp(this, 16), 0);
+        root.addView(header, headerParams);
         return root;
     }
 
@@ -433,7 +543,7 @@ public class MainActivity extends Activity {
         avatar.setColorFilter(UiFactory.DARK_GREEN);
         avatar.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         avatar.setPadding(UiFactory.dp(this, 18), UiFactory.dp(this, 18), UiFactory.dp(this, 18), UiFactory.dp(this, 18));
-        avatar.setBackground(UiFactory.rounded(this, Color.argb(185, 255, 255, 255), 44));
+        avatar.setBackground(UiFactory.roundedStroke(this, Color.argb(145, 5, 17, 25), 44, Color.argb(95, 255, 255, 255), 1));
         header.addView(avatar, new LinearLayout.LayoutParams(UiFactory.dp(this, 88), UiFactory.dp(this, 88)));
 
         LinearLayout nameBlock = new LinearLayout(this);
@@ -517,50 +627,83 @@ public class MainActivity extends Activity {
         return handle;
     }
 
-    private LinearLayout mapPlaceholder() {
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setGravity(Gravity.CENTER);
-        panel.setPadding(UiFactory.dp(this, 18), UiFactory.dp(this, 18), UiFactory.dp(this, 18), UiFactory.dp(this, 18));
-        panel.setBackground(UiFactory.frostedPanel(this, 24));
+    private FrameLayout mapPanel() {
+        FrameLayout panel = new FrameLayout(this);
+        panel.setBackgroundColor(Color.rgb(7, 17, 28));
 
-        ImageView marker = new ImageView(this);
-        marker.setImageResource(R.drawable.ic_map_marker);
-        marker.setColorFilter(Color.WHITE);
-        marker.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        panel.addView(marker, new LinearLayout.LayoutParams(UiFactory.dp(this, 78), UiFactory.dp(this, 78)));
-
-        TextView title = UiFactory.label(this, "Google Map placeholder", 22, Color.WHITE, true);
-        title.setGravity(Gravity.CENTER);
-        panel.addView(title);
-
-        TextView hint = UiFactory.label(this,
-                "Add your Google Maps API key later, then replace this panel with a SupportMapFragment and draw markers from repository.getToilets().",
-                14,
-                Color.argb(220, 255, 255, 255),
-                false);
-        hint.setGravity(Gravity.CENTER);
-        hint.setLineSpacing(UiFactory.dp(this, 4), 1f);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+        destroyMapView();
+        mapView = new MapView(this);
+        mapView.onCreate(mapViewState);
+        if (activityResumed) {
+            mapView.onResume();
+        }
+        panel.addView(mapView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        hintParams.setMargins(0, UiFactory.dp(this, 10), 0, UiFactory.dp(this, 18));
-        panel.addView(hint, hintParams);
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        mapView.getMapAsync(this::setupGoogleMap);
+        return panel;
+    }
+
+    private void setupGoogleMap(GoogleMap map) {
+        if (map == null) {
+            return;
+        }
+
+        map.getUiSettings().setZoomControlsEnabled(true);
+        map.getUiSettings().setCompassEnabled(true);
+        map.getUiSettings().setMapToolbarEnabled(true);
+        map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        map.clear();
+
+        Toilet focusedToilet = focusedMapToiletId == null ? null : repository.getToiletById(focusedMapToiletId);
+        LatLng cameraTarget = focusedToilet == null
+                ? new LatLng(22.2834, 114.1367)
+                : new LatLng(focusedToilet.latitude, focusedToilet.longitude);
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(cameraTarget, focusedToilet == null ? 16.5f : 18f));
 
         for (Toilet toilet : repository.getToilets()) {
-            TextView markerRow = UiFactory.label(this,
-                    "• " + toilet.building + " " + toilet.floor + " (" + toilet.genderLabel() + ")",
-                    14,
-                    Color.WHITE,
-                    false);
-            markerRow.setGravity(Gravity.CENTER_VERTICAL);
-            panel.addView(markerRow, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    UiFactory.dp(this, 28)
-            ));
+            MarkerOptions options = new MarkerOptions()
+                    .position(new LatLng(toilet.latitude, toilet.longitude))
+                    .title(toilet.building + " " + toilet.floor)
+                    .snippet(String.format(Locale.US, "Rating %.1f · %s · tap for details", toilet.avgOverall, toilet.crowdLabel()))
+                    .icon(BitmapDescriptorFactory.defaultMarker(markerHue(toilet)));
+            com.google.android.gms.maps.model.Marker marker = map.addMarker(options);
+            if (marker != null) {
+                marker.setTag(toilet.id);
+                if (toilet.id.equals(focusedMapToiletId)) {
+                    marker.showInfoWindow();
+                }
+            }
         }
-        return panel;
+
+        map.setOnInfoWindowClickListener(marker -> {
+            Object object = marker.getTag();
+            if (object instanceof String) {
+                openDetail((String) object);
+            }
+        });
+    }
+
+    private float markerHue(Toilet toilet) {
+        if (toilet.id.equals(focusedMapToiletId)) {
+            return BitmapDescriptorFactory.HUE_YELLOW;
+        }
+        if ("male".equals(toilet.gender)) {
+            return BitmapDescriptorFactory.HUE_AZURE;
+        }
+        if ("female".equals(toilet.gender)) {
+            return BitmapDescriptorFactory.HUE_ROSE;
+        }
+        return BitmapDescriptorFactory.HUE_GREEN;
+    }
+
+    private void destroyMapView() {
+        if (mapView != null) {
+            mapView.onDestroy();
+            mapView = null;
+        }
     }
 
     private HorizontalScrollView buildFilterBar() {
@@ -583,7 +726,7 @@ public class MainActivity extends Activity {
         row.addView(filterIcon(R.drawable.ic_accessible, showAccessible, Color.rgb(79, 177, 104), () -> showAccessible = !showAccessible));
         row.addView(filterIcon(R.drawable.ic_tissue, requireTissue, Color.rgb(245, 179, 53), () -> requireTissue = !requireTissue));
         row.addView(filterIcon(R.drawable.ic_dryer, requireDryer, Color.rgb(58, 174, 190), () -> requireDryer = !requireDryer));
-        row.addView(actionIcon(R.drawable.ic_filter, Color.WHITE, UiFactory.TEXT, this::showSortDialog));
+        row.addView(actionIcon(R.drawable.ic_filter, Color.WHITE, UiFactory.TEXT, this::showAdvancedFilterDialog));
         return scroll;
     }
 
@@ -596,7 +739,7 @@ public class MainActivity extends Activity {
         icon.setPadding(inset, inset, inset, inset);
         icon.setBackground(selected
                 ? UiFactory.rounded(this, selectedColor, 24)
-                : UiFactory.rounded(this, Color.argb(150, 255, 255, 255), 24));
+                : UiFactory.roundedStroke(this, Color.argb(118, 5, 17, 25), 24, Color.argb(65, 255, 255, 255), 1));
         icon.setElevation(selected ? UiFactory.dp(this, 2) : 0);
         icon.setOnClickListener(v -> {
             toggle.run();
@@ -625,7 +768,7 @@ public class MainActivity extends Activity {
         icon.setColorFilter(iconColor);
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         icon.setPadding(UiFactory.dp(this, 11), UiFactory.dp(this, 11), UiFactory.dp(this, 11), UiFactory.dp(this, 11));
-        icon.setBackground(UiFactory.roundedStroke(this, Color.argb(150, 255, 255, 255), 24, Color.argb(120, 255, 255, 255), 1));
+        icon.setBackground(UiFactory.roundedStroke(this, Color.argb(118, 5, 17, 25), 24, Color.argb(75, 255, 255, 255), 1));
         icon.setElevation(UiFactory.dp(this, 2));
         icon.setOnClickListener(v -> action.run());
 
@@ -642,7 +785,7 @@ public class MainActivity extends Activity {
 
         TextView sort = UiFactory.label(this, sortMode == 0 ? "Distance" : "Rating", 14, Color.WHITE, true);
         sort.setGravity(Gravity.CENTER);
-        sort.setBackground(UiFactory.rounded(this, Color.argb(120, 255, 255, 255), 20));
+        sort.setBackground(UiFactory.rounded(this, Color.argb(135, 5, 17, 25), 20));
         sort.setOnClickListener(v -> showSortDialog());
         titleRow.addView(sort, new LinearLayout.LayoutParams(UiFactory.dp(this, 104), UiFactory.dp(this, 40)));
         return titleRow;
@@ -670,6 +813,9 @@ public class MainActivity extends Activity {
         int normalized = normalizeTab(tab);
         if (currentTab == normalized) {
             return;
+        }
+        if (currentTab == TAB_MAP && normalized != TAB_MAP) {
+            destroyMapView();
         }
         currentTab = normalized;
         setContentView(buildContent());
@@ -801,7 +947,7 @@ public class MainActivity extends Activity {
 
         TextView number = UiFactory.label(this, String.valueOf(rank), 18, Color.WHITE, true);
         number.setGravity(Gravity.CENTER);
-        number.setBackground(UiFactory.rounded(this, Color.argb(120, 255, 255, 255), 22));
+        number.setBackground(UiFactory.rounded(this, Color.rgb(166, 174, 183), 22));
         return withSize(number, UiFactory.dp(this, 44), UiFactory.dp(this, 44));
     }
 
@@ -823,7 +969,7 @@ public class MainActivity extends Activity {
         icon.setColorFilter(color);
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         icon.setPadding(UiFactory.dp(this, 10), UiFactory.dp(this, 10), UiFactory.dp(this, 10), UiFactory.dp(this, 10));
-        icon.setBackground(UiFactory.rounded(this, Color.argb(120, 255, 255, 255), 24));
+        icon.setBackground(UiFactory.roundedStroke(this, Color.argb(110, 5, 17, 25), 24, Color.argb(70, 255, 255, 255), 1));
         row.addView(icon, new LinearLayout.LayoutParams(UiFactory.dp(this, 48), UiFactory.dp(this, 48)));
 
         LinearLayout text = new LinearLayout(this);
@@ -875,10 +1021,11 @@ public class MainActivity extends Activity {
 
     private List<Toilet> filteredToilets() {
         List<Toilet> result = new ArrayList<>();
+        String query = searchQuery == null ? "" : searchQuery.trim().toLowerCase(Locale.US);
         for (Toilet toilet : repository.getToilets()) {
             boolean hasGenderFilter = showMale || showFemale;
-            boolean genderMatches = (showMale && "male".equals(toilet.gender))
-                    || (showFemale && "female".equals(toilet.gender));
+            boolean genderMatches = (showMale && ("male".equals(toilet.gender) || "all".equals(toilet.gender)))
+                    || (showFemale && ("female".equals(toilet.gender) || "all".equals(toilet.gender)));
             if (hasGenderFilter && !genderMatches) {
                 continue;
             }
@@ -889,6 +1036,9 @@ public class MainActivity extends Activity {
                 continue;
             }
             if (requireDryer && !toilet.hasDryer) {
+                continue;
+            }
+            if (!query.isEmpty() && !matchesSearch(toilet, query)) {
                 continue;
             }
             result.add(toilet);
@@ -902,6 +1052,16 @@ public class MainActivity extends Activity {
         return result;
     }
 
+    private boolean matchesSearch(Toilet toilet, String query) {
+        String searchable = (toilet.building + " "
+                + toilet.floor + " "
+                + toilet.genderLabel() + " "
+                + toilet.facilitiesLabel() + " "
+                + toilet.openingHours + " "
+                + toilet.note).toLowerCase(Locale.US);
+        return searchable.contains(query);
+    }
+
     private void showSortDialog() {
         String[] options = {"Distance", "Overall rating"};
         new AlertDialog.Builder(this)
@@ -912,6 +1072,81 @@ public class MainActivity extends Activity {
                     setContentView(buildContent());
                 })
                 .show();
+    }
+
+    private void showAdvancedFilterDialog() {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int padding = UiFactory.dp(this, 18);
+        content.setPadding(padding, UiFactory.dp(this, 8), padding, 0);
+
+        CheckBox male = filterCheckBox("Male toilets", showMale);
+        CheckBox female = filterCheckBox("Female toilets", showFemale);
+        CheckBox accessible = filterCheckBox("Accessible toilets", showAccessible);
+        CheckBox tissue = filterCheckBox("Tissue available", requireTissue);
+        CheckBox dryer = filterCheckBox("Hand dryer available", requireDryer);
+        content.addView(male);
+        content.addView(female);
+        content.addView(accessible);
+        content.addView(tissue);
+        content.addView(dryer);
+
+        TextView sortTitle = UiFactory.label(this, "Sort by", 15, UiFactory.TEXT, true);
+        LinearLayout.LayoutParams sortTitleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        sortTitleParams.setMargins(0, UiFactory.dp(this, 12), 0, 0);
+        content.addView(sortTitle, sortTitleParams);
+
+        RadioGroup sortGroup = new RadioGroup(this);
+        sortGroup.setOrientation(RadioGroup.VERTICAL);
+        RadioButton distance = new RadioButton(this);
+        distance.setText("Distance");
+        distance.setTextSize(15);
+        distance.setId(1001);
+        RadioButton rating = new RadioButton(this);
+        rating.setText("Overall rating");
+        rating.setTextSize(15);
+        rating.setId(1002);
+        sortGroup.addView(distance);
+        sortGroup.addView(rating);
+        sortGroup.check(sortMode == 1 ? 1002 : 1001);
+        content.addView(sortGroup);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Advanced filter")
+                .setView(content)
+                .setNegativeButton("Reset", (dialog, which) -> {
+                    showMale = false;
+                    showFemale = false;
+                    showAccessible = false;
+                    requireTissue = false;
+                    requireDryer = false;
+                    sortMode = 0;
+                    searchQuery = "";
+                    setContentView(buildContent());
+                })
+                .setPositiveButton("Apply", (dialog, which) -> {
+                    showMale = male.isChecked();
+                    showFemale = female.isChecked();
+                    showAccessible = accessible.isChecked();
+                    requireTissue = tissue.isChecked();
+                    requireDryer = dryer.isChecked();
+                    sortMode = sortGroup.getCheckedRadioButtonId() == 1002 ? 1 : 0;
+                    setContentView(buildContent());
+                })
+                .show();
+    }
+
+    private CheckBox filterCheckBox(String text, boolean checked) {
+        CheckBox checkBox = new CheckBox(this);
+        checkBox.setText(text);
+        checkBox.setTextSize(15);
+        checkBox.setChecked(checked);
+        checkBox.setGravity(Gravity.CENTER_VERTICAL);
+        checkBox.setPadding(0, UiFactory.dp(this, 4), 0, UiFactory.dp(this, 4));
+        return checkBox;
     }
 
     private int iconForToilet(Toilet toilet) {
@@ -938,7 +1173,7 @@ public class MainActivity extends Activity {
         int filled = Math.max(1, Math.min(5, (int) Math.round(rating)));
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < 5; i++) {
-            builder.append(i < filled ? "*" : "-");
+            builder.append(i < filled ? "★" : "☆");
         }
         return builder.toString();
     }
