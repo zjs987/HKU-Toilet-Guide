@@ -50,11 +50,11 @@ public class AdminActivity extends Activity {
         page.setBackgroundColor(Color.WHITE);
         scrollView.addView(page);
 
-        page.addView(backBar("Admin Console"));
-        page.addView(UiFactory.subtitle(this, "Review content submissions and manage live toilet statuses."));
+        page.addView(backBar("Admin Dashboard"));
+        page.addView(UiFactory.subtitle(this, "Use this page for pending tasks. For direct toilet changes, open a toilet from Home, Map, or Ranking."));
         page.addView(summaryRow());
 
-        page.addView(sectionTitle("Content Moderation"));
+        page.addView(sectionTitle("Pending Content"));
         List<ContentSubmission> submissions = repository.getContentSubmissions();
         boolean hasPendingContent = false;
         for (ContentSubmission submission : submissions) {
@@ -67,43 +67,24 @@ public class AdminActivity extends Activity {
             page.addView(emptyState("No pending content submissions."));
         }
 
-        page.addView(sectionTitle("Live Status Record Flow"));
-        page.addView(statusManager());
+        page.addView(sectionTitle("Active Status Issues"));
         List<LiveStatusReport> reports = repository.getAllLiveStatusReports();
+        boolean hasActiveStatuses = false;
         if (reports.isEmpty()) {
             page.addView(emptyState("No status reports yet."));
         } else {
             for (LiveStatusReport report : reports) {
-                page.addView(statusCard(report));
+                if (!report.resolved) {
+                    page.addView(statusCard(report));
+                    hasActiveStatuses = true;
+                }
             }
+        }
+        if (!hasActiveStatuses) {
+            page.addView(emptyState("No active status issues."));
         }
 
         return scrollView;
-    }
-
-    private LinearLayout statusManager() {
-        LinearLayout block = cardShell();
-        block.addView(UiFactory.label(this, "Manual Toilet Status Manager", 16, UiFactory.TEXT, true));
-        TextView tip = UiFactory.label(this, "Admins can directly restore normal states or set a toilet to maintenance / closed.", 13, UiFactory.MUTED, false);
-        tip.setLineSpacing(UiFactory.dp(this, 2), 1f);
-        block.addView(tip, blockParams(6));
-
-        for (Toilet toilet : repository.getToilets()) {
-            LinearLayout row = new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-            rowParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
-            row.setLayoutParams(rowParams);
-
-            TextView name = UiFactory.label(this, toilet.building + " " + toilet.floor, 14, UiFactory.TEXT, false);
-            row.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            row.addView(actionButton("Set status", UiFactory.DARK_GREEN, v -> showManualStatusDialog(toilet)));
-            block.addView(row);
-        }
-        return block;
     }
 
     private LinearLayout summaryRow() {
@@ -164,8 +145,9 @@ public class AdminActivity extends Activity {
     private LinearLayout contentCard(ContentSubmission submission) {
         LinearLayout card = cardShell();
         Toilet toilet = repository.getToiletById(submission.toiletId);
+        String toiletLabel = toilet == null ? submission.toiletId : toilet.building + " " + toilet.floor;
         card.addView(UiFactory.label(this,
-                submission.typeLabel() + " · " + (toilet == null ? submission.toiletId : toilet.building + " " + toilet.floor),
+                submission.typeLabel() + " · " + toiletLabel,
                 16,
                 UiFactory.TEXT,
                 true));
@@ -190,6 +172,7 @@ public class AdminActivity extends Activity {
 
         LinearLayout actions = new LinearLayout(this);
         actions.setGravity(Gravity.RIGHT);
+        actions.addView(actionButton("Open toilet", UiFactory.BLUE, v -> openToilet(submission.toiletId)));
         actions.addView(actionButton("Approve", UiFactory.DARK_GREEN, v -> moderate(submission, true)));
         actions.addView(actionButton("Reject", Color.rgb(220, 72, 72), v -> moderate(submission, false)));
         card.addView(actions, blockParams(10));
@@ -221,6 +204,7 @@ public class AdminActivity extends Activity {
         if (!report.resolved) {
             LinearLayout actions = new LinearLayout(this);
             actions.setGravity(Gravity.RIGHT);
+            actions.addView(actionButton("Open toilet", UiFactory.BLUE, v -> openToilet(report.toiletId)));
             actions.addView(actionButton("Mark resolved", UiFactory.DARK_GREEN, v -> resolve(report)));
             actions.addView(actionButton(normalizeLabel(report), UiFactory.BLUE, v -> normalize(report)));
             card.addView(actions, blockParams(8));
@@ -347,6 +331,12 @@ public class AdminActivity extends Activity {
         setContentView(buildContent());
     }
 
+    private void openToilet(String toiletId) {
+        android.content.Intent intent = new android.content.Intent(this, DetailActivity.class);
+        intent.putExtra(DetailActivity.EXTRA_TOILET_ID, toiletId);
+        startActivity(intent);
+    }
+
     private void resolve(LiveStatusReport report) {
         repository.resolveLiveStatus(report.id);
         Toast.makeText(this, "Status marked resolved", Toast.LENGTH_SHORT).show();
@@ -387,36 +377,4 @@ public class AdminActivity extends Activity {
         return LiveStatusReport.STATUS_OPEN;
     }
 
-    private void showManualStatusDialog(Toilet toilet) {
-        String[] labels = {
-                "Tissue OK",
-                "Tissue low",
-                "Soap OK",
-                "Soap low",
-                "Dryer OK",
-                "Dryer broken",
-                "Open",
-                "Under maintenance",
-                "Temporarily closed"
-        };
-        String[] codes = {
-                LiveStatusReport.STATUS_TISSUE_OK,
-                LiveStatusReport.STATUS_TISSUE_LOW,
-                LiveStatusReport.STATUS_SOAP_OK,
-                LiveStatusReport.STATUS_SOAP_LOW,
-                LiveStatusReport.STATUS_DRYER_OK,
-                LiveStatusReport.STATUS_DRYER_BROKEN,
-                LiveStatusReport.STATUS_OPEN,
-                LiveStatusReport.STATUS_MAINTENANCE,
-                LiveStatusReport.STATUS_CLOSED_TEMPORARILY
-        };
-        new AlertDialog.Builder(this)
-                .setTitle(toilet.building + " " + toilet.floor)
-                .setItems(labels, (dialog, which) -> {
-                    repository.submitLiveStatuses(toilet.id, java.util.Collections.singletonList(codes[which]));
-                    Toast.makeText(this, "Status updated", Toast.LENGTH_SHORT).show();
-                    setContentView(buildContent());
-                })
-                .show();
-    }
 }

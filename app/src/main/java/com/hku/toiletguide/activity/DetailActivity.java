@@ -21,6 +21,7 @@ import android.widget.Toast;
 
 import com.hku.toiletguide.R;
 import com.hku.toiletguide.data.MockToiletRepository;
+import com.hku.toiletguide.model.ContentSubmission;
 import com.hku.toiletguide.model.LiveStatusReport;
 import com.hku.toiletguide.model.Review;
 import com.hku.toiletguide.model.Toilet;
@@ -328,6 +329,9 @@ public class DetailActivity extends Activity {
         stats.addView(statCard("Open", toilet.openingHours, Color.rgb(140, 196, 255)));
         stats.addView(statCard("Rating", String.format(Locale.US, "%.1f", toilet.avgOverall), Color.rgb(245, 179, 53)));
         section.addView(liveStatusSection(toilet));
+        if (isAdmin()) {
+            section.addView(adminActionsSection(toilet));
+        }
         section.addView(reportActions(toilet));
         return section;
     }
@@ -482,13 +486,26 @@ public class DetailActivity extends Activity {
 
     private LinearLayout reportActions(Toilet toilet) {
         LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+        row.setOrientation(LinearLayout.VERTICAL);
+
+        if (isAdmin()) {
+            TextView adminHint = UiFactory.label(this,
+                    "Users can report here. Admin direct-edit tools are shown above for this toilet.",
+                    13,
+                    Color.argb(210, 255, 255, 255),
+                    false);
+            adminHint.setLineSpacing(UiFactory.dp(this, 2), 1f);
+            row.addView(adminHint);
+        }
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        params.setMargins(0, UiFactory.dp(this, 14), 0, 0);
-        row.setLayoutParams(params);
+        actionsParams.setMargins(0, UiFactory.dp(this, 14), 0, 0);
+        actions.setLayoutParams(actionsParams);
 
         Button crowd = UiFactory.primaryButton(this, "Report crowd");
         crowd.setOnClickListener(v -> showCrowdDialog(toilet));
@@ -498,7 +515,7 @@ public class DetailActivity extends Activity {
                 1f
         );
         crowdParams.setMargins(0, 0, UiFactory.dp(this, 8), 0);
-        row.addView(crowd, crowdParams);
+        actions.addView(crowd, crowdParams);
 
         Button status = UiFactory.primaryButton(this, "Report status");
         status.setOnClickListener(v -> {
@@ -506,8 +523,204 @@ public class DetailActivity extends Activity {
             intent.putExtra(EXTRA_TOILET_ID, toilet.id);
             startActivity(intent);
         });
-        row.addView(status, new LinearLayout.LayoutParams(0, UiFactory.dp(this, 48), 1f));
+        actions.addView(status, new LinearLayout.LayoutParams(0, UiFactory.dp(this, 48), 1f));
+        row.addView(actions);
         return row;
+    }
+
+    private LinearLayout adminActionsSection(Toilet toilet) {
+        LinearLayout block = new LinearLayout(this);
+        block.setOrientation(LinearLayout.VERTICAL);
+        block.setBackground(UiFactory.rounded(this, Color.argb(92, 5, 17, 25), 12));
+        block.setPadding(UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12), UiFactory.dp(this, 12));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, UiFactory.dp(this, 16), 0, 0);
+        block.setLayoutParams(params);
+
+        block.addView(UiFactory.label(this, "Admin Controls", 17, Color.WHITE, true));
+        TextView hint = UiFactory.label(this,
+                "Change this toilet directly here. Use Admin Dashboard only for pending reviews and active issue queue.",
+                13,
+                Color.argb(210, 255, 255, 255),
+                false);
+        hint.setLineSpacing(UiFactory.dp(this, 2), 1f);
+        block.addView(hint, topMargin(8));
+
+        LinearLayout quickActions = new LinearLayout(this);
+        quickActions.setGravity(Gravity.CENTER_VERTICAL);
+        quickActions.addView(adminActionButton("Set crowd", v -> showCrowdDialog(toilet), true));
+        quickActions.addView(adminActionButton("Set status", v -> showAdminStatusDialog(toilet), false));
+        block.addView(quickActions, topMargin(12));
+
+        List<LiveStatusReport> activeStatuses = repository.getLatestActiveStatuses(toilet.id);
+        if (!activeStatuses.isEmpty()) {
+            block.addView(UiFactory.label(this, "Active issues for this toilet", 14, Color.WHITE, true), topMargin(14));
+            for (LiveStatusReport report : activeStatuses) {
+                block.addView(adminStatusRow(report), topMargin(8));
+            }
+        }
+
+        int pendingCount = pendingSubmissionCount(toilet.id);
+        if (pendingCount > 0) {
+            TextView pending = UiFactory.label(this,
+                    pendingCount + " pending submissions are waiting for moderation for this toilet.",
+                    13,
+                    Color.argb(210, 255, 255, 255),
+                    false);
+            pending.setLineSpacing(UiFactory.dp(this, 2), 1f);
+            block.addView(pending, topMargin(14));
+        }
+        return block;
+    }
+
+    private LinearLayout adminStatusRow(LiveStatusReport report) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(UiFactory.dp(this, 10), UiFactory.dp(this, 10), UiFactory.dp(this, 10), UiFactory.dp(this, 10));
+        row.setBackground(UiFactory.rounded(this, Color.argb(92, 16, 31, 44), 10));
+
+        row.addView(UiFactory.label(this,
+                LiveStatusReport.groupLabel(report.group()) + " · " + report.label(),
+                14,
+                Color.WHITE,
+                true));
+        row.addView(UiFactory.label(this,
+                "Reported by " + report.userName + " · " + report.createdLabel(),
+                12,
+                Color.argb(210, 255, 255, 255),
+                false), topMargin(4));
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.RIGHT);
+        actions.addView(adminChipButton("Resolve", v -> {
+            repository.resolveLiveStatus(report.id);
+            Toast.makeText(this, "Status marked resolved", Toast.LENGTH_SHORT).show();
+            setContentView(buildContent());
+        }, UiFactory.DARK_GREEN));
+        actions.addView(adminChipButton(normalizeLabel(report), v -> {
+            repository.resolveLiveStatus(report.id);
+            repository.submitLiveStatuses(report.toiletId, java.util.Collections.singletonList(restoreStatusFor(report.statusCode)));
+            Toast.makeText(this, "Status restored to normal", Toast.LENGTH_SHORT).show();
+            setContentView(buildContent());
+        }, UiFactory.BLUE));
+        row.addView(actions, topMargin(10));
+        return row;
+    }
+
+    private Button adminActionButton(String text, View.OnClickListener listener, boolean addRightMargin) {
+        Button button = UiFactory.primaryButton(this, text);
+        button.setOnClickListener(listener);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0,
+                UiFactory.dp(this, 46),
+                1f
+        );
+        if (addRightMargin) {
+            params.setMargins(0, 0, UiFactory.dp(this, 8), 0);
+        }
+        button.setLayoutParams(params);
+        return button;
+    }
+
+    private Button adminChipButton(String text, View.OnClickListener listener, int color) {
+        Button button = new Button(this);
+        button.setText(text);
+        button.setAllCaps(false);
+        button.setTextColor(color);
+        button.setBackground(UiFactory.roundedStroke(this, Color.argb(86, 5, 17, 25), 14, Color.argb(85, 255, 255, 255), 1));
+        button.setOnClickListener(listener);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                UiFactory.dp(this, 40)
+        );
+        params.setMargins(UiFactory.dp(this, 8), 0, 0, 0);
+        button.setLayoutParams(params);
+        return button;
+    }
+
+    private LinearLayout.LayoutParams topMargin(int topDp) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, UiFactory.dp(this, topDp), 0, 0);
+        return params;
+    }
+
+    private int pendingSubmissionCount(String targetToiletId) {
+        int count = 0;
+        for (ContentSubmission submission : repository.getContentSubmissions()) {
+            if (targetToiletId.equals(submission.toiletId) && submission.isPending()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean isAdmin() {
+        return "admin".equals(repository.getCurrentUser().role);
+    }
+
+    private String normalizeLabel(LiveStatusReport report) {
+        if (LiveStatusReport.GROUP_TISSUE.equals(report.group())) {
+            return "Set tissue OK";
+        }
+        if (LiveStatusReport.GROUP_SOAP.equals(report.group())) {
+            return "Set soap OK";
+        }
+        if (LiveStatusReport.GROUP_DRYER.equals(report.group())) {
+            return "Set dryer OK";
+        }
+        return "Set open";
+    }
+
+    private String restoreStatusFor(String statusCode) {
+        if (LiveStatusReport.GROUP_TISSUE.equals(LiveStatusReport.groupFor(statusCode))) {
+            return LiveStatusReport.STATUS_TISSUE_OK;
+        }
+        if (LiveStatusReport.GROUP_SOAP.equals(LiveStatusReport.groupFor(statusCode))) {
+            return LiveStatusReport.STATUS_SOAP_OK;
+        }
+        if (LiveStatusReport.GROUP_DRYER.equals(LiveStatusReport.groupFor(statusCode))) {
+            return LiveStatusReport.STATUS_DRYER_OK;
+        }
+        return LiveStatusReport.STATUS_OPEN;
+    }
+
+    private void showAdminStatusDialog(Toilet toilet) {
+        String[] labels = {
+                "Tissue OK",
+                "Tissue low",
+                "Soap OK",
+                "Soap low",
+                "Dryer OK",
+                "Dryer broken",
+                "Open",
+                "Under maintenance",
+                "Temporarily closed"
+        };
+        String[] codes = {
+                LiveStatusReport.STATUS_TISSUE_OK,
+                LiveStatusReport.STATUS_TISSUE_LOW,
+                LiveStatusReport.STATUS_SOAP_OK,
+                LiveStatusReport.STATUS_SOAP_LOW,
+                LiveStatusReport.STATUS_DRYER_OK,
+                LiveStatusReport.STATUS_DRYER_BROKEN,
+                LiveStatusReport.STATUS_OPEN,
+                LiveStatusReport.STATUS_MAINTENANCE,
+                LiveStatusReport.STATUS_CLOSED_TEMPORARILY
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Admin update · " + toilet.building + " " + toilet.floor)
+                .setItems(labels, (dialog, which) -> {
+                    repository.submitLiveStatuses(toilet.id, java.util.Collections.singletonList(codes[which]));
+                    Toast.makeText(this, "Toilet status updated", Toast.LENGTH_SHORT).show();
+                    setContentView(buildContent());
+                })
+                .show();
     }
 
     private void showCrowdDialog(Toilet toilet) {

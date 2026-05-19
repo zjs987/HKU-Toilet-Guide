@@ -565,21 +565,22 @@ public class MainActivity extends Activity {
         nameBlock.addView(email, emailParams);
         panel.addView(header);
 
-        int reviewed = 0;
-        for (Toilet toilet : repository.getToilets()) {
-            reviewed += toilet.reviews.size();
-        }
-
+        int favoriteCount = repository.getCurrentUserFavoriteToilets().size();
         int pendingSubmissions = 0;
-        for (ContentSubmission submission : repository.getContentSubmissions()) {
-            if (currentUser.id.equals(submission.userId) && submission.isPending()) {
+        int totalSubmissions = 0;
+        for (ContentSubmission submission : repository.getCurrentUserSubmissions()) {
+            totalSubmissions++;
+            if (submission.isPending()) {
                 pendingSubmissions++;
             }
         }
 
-        panel.addView(menuRow(R.drawable.ic_favorite, "My favorites", "Saved toilets", UiFactory.PINK, null));
-        panel.addView(menuRow(R.drawable.ic_comment, "Approved reviews", reviewed + " visible reviews in demo data", Color.rgb(74, 134, 230), null));
-        panel.addView(menuRow(R.drawable.ic_toilet, "My submissions", pendingSubmissions + " pending content items", UiFactory.DARK_GREEN, null));
+        panel.addView(menuRow(R.drawable.ic_favorite, "My favorites", favoriteCount + " saved toilets", UiFactory.PINK,
+                v -> startActivity(new Intent(this, FavoritesActivity.class))));
+        panel.addView(menuRow(R.drawable.ic_toilet, "My submissions",
+                pendingSubmissions + " pending · " + totalSubmissions + " total",
+                UiFactory.DARK_GREEN,
+                v -> startActivity(new Intent(this, MySubmissionsActivity.class))));
         if ("admin".equals(currentUser.role)) {
             panel.addView(menuRow(R.drawable.ic_admin, "Admin console", "Moderate content and resolve live statuses", Color.rgb(245, 179, 53),
                     v -> startActivity(new Intent(this, AdminActivity.class))));

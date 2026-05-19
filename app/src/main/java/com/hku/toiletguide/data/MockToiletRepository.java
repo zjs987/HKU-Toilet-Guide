@@ -320,6 +320,27 @@ public class MockToiletRepository implements ToiletRepository {
         return favoriteToiletIds.contains(toiletId);
     }
 
+    public List<Toilet> getCurrentUserFavoriteToilets() {
+        List<Toilet> result = new ArrayList<>();
+        for (Toilet toilet : toilets) {
+            if (favoriteToiletIds.contains(toilet.id)) {
+                result.add(toilet);
+            }
+        }
+        return result;
+    }
+
+    public List<ContentSubmission> getCurrentUserSubmissions() {
+        List<ContentSubmission> result = new ArrayList<>();
+        for (ContentSubmission submission : contentSubmissions) {
+            if (currentUser.id.equals(submission.userId)) {
+                result.add(submission);
+            }
+        }
+        result.sort((a, b) -> Long.compare(b.createdAt, a.createdAt));
+        return result;
+    }
+
     public void toggleFavorite(String toiletId) {
         if (favoriteToiletIds.contains(toiletId)) {
             favoriteToiletIds.remove(toiletId);

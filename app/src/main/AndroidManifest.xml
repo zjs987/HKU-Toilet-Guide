@@ -22,6 +22,8 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDVo77Wu29GQ3v7HIiu2zVldq8CisrxkgM" />
         <activity android:name=".activity.ImagePreviewActivity" />
+        <activity android:name=".activity.MySubmissionsActivity" />
+        <activity android:name=".activity.FavoritesActivity" />
         <activity android:name=".activity.AdminActivity" />
         <activity android:name=".activity.ContentSubmissionActivity" />
         <activity android:name=".activity.StatusReportActivity" />
