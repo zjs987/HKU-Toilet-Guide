@@ -292,6 +292,7 @@ class ToiletGuideDatabase {
                 object.put("comment", review.comment);
                 object.put("createdAt", review.createdAt);
                 object.put("likes", review.likes);
+                object.put("imageUri", safeString(review.imageUri));
                 object.put("likedUserIds", serializeStringSet(review.likedUserIds()));
                 array.put(object);
             } catch (JSONException ignored) {
@@ -386,6 +387,7 @@ class ToiletGuideDatabase {
                     object.optLong("createdAt"),
                     object.optInt("likes")
             );
+            review.imageUri = object.optString("imageUri");
             Set<String> likedUsers = deserializeStringSet(object.optJSONArray("likedUserIds"));
             for (String likedUser : likedUsers) {
                 review.restoreLikedBy(likedUser);

@@ -21,13 +21,14 @@ import java.util.Set;
 public class MockToiletRepository implements ToiletRepository {
     private static MockToiletRepository instance;
 
-    private final User studentUser = new User("user_hku_001", "HKU Student", "hku.student@connect.hku.hk", "user");
+    private final User studentUser = new User("user_hku_001", "Jack Chan", "hku.student@connect.hku.hk", "user");
     private final User adminUser = new User("admin_hku_001", "HKU Admin", "admin@hku.hk", "admin");
-    private final User pickyReviewer = new User("user_picky_002", "Sensitive Nose", "reviewer002@connect.hku.hk", "user");
-    private final User libraryReviewer = new User("user_library_003", "Library Regular", "reviewer003@connect.hku.hk", "user");
-    private final User campusGuide = new User("user_guide_004", "Campus Guide", "guide004@connect.hku.hk", "user");
-    private final User rushingStudent = new User("user_rush_005", "Rushing Student", "rush005@connect.hku.hk", "user");
+    private final User pickyReviewer = new User("user_picky_002", "Lily Wong", "reviewer002@connect.hku.hk", "user");
+    private final User libraryReviewer = new User("user_library_003", "Ryan Lee", "reviewer003@connect.hku.hk", "user");
+    private final User campusGuide = new User("user_guide_004", "Mia Lau", "guide004@connect.hku.hk", "user");
+    private final User rushingStudent = new User("user_rush_005", "Ethan Ho", "rush005@connect.hku.hk", "user");
     private User currentUser = studentUser;
+    private boolean hasActiveSession = true;
     private ToiletGuideDatabase database;
 
     private final List<Toilet> toilets = new ArrayList<>();
@@ -55,6 +56,9 @@ public class MockToiletRepository implements ToiletRepository {
         User savedUser = database.getCurrentUser();
         if (savedUser != null) {
             currentUser = savedUser;
+            hasActiveSession = true;
+        } else {
+            hasActiveSession = false;
         }
         database.loadInto(toilets, favoriteToiletIds, contentSubmissions, liveStatusReports, currentUser.id);
     }
@@ -79,12 +83,17 @@ public class MockToiletRepository implements ToiletRepository {
         return currentUser;
     }
 
+    public boolean hasActiveSession() {
+        return hasActiveSession;
+    }
+
     @Override
     public boolean login(String email, String password) {
         if (database != null) {
             User user = database.authenticate(email, password);
             if (user != null) {
                 currentUser = user;
+                hasActiveSession = true;
                 persistCurrentUser(user.email);
                 database.loadInto(toilets, favoriteToiletIds, contentSubmissions, liveStatusReports, currentUser.id);
                 return true;
@@ -106,6 +115,7 @@ public class MockToiletRepository implements ToiletRepository {
             return false;
         }
         currentUser = localUser;
+        hasActiveSession = true;
         persistCurrentUser(localUser.email);
         database.loadInto(toilets, favoriteToiletIds, contentSubmissions, liveStatusReports, currentUser.id);
         return true;
@@ -114,6 +124,7 @@ public class MockToiletRepository implements ToiletRepository {
     @Override
     public void logout() {
         currentUser = studentUser;
+        hasActiveSession = false;
         if (database != null) {
             database.clearCurrentUser();
             database.loadInto(toilets, favoriteToiletIds, contentSubmissions, liveStatusReports, currentUser.id);
@@ -527,13 +538,16 @@ public class MockToiletRepository implements ToiletRepository {
                 break;
             case "toilet_kk_leung_high":
                 addSeedReview(toilet, pickyReviewer, 5, 1, 5, 16, true,
-                        "High-floor KKL is the champion: new facilities, clean mirrors, low traffic and a quiet business-school feel.");
+                        "High-floor KKL is the champion: new facilities, clean mirrors, low traffic and a quiet business-school feel.",
+                        "res://review_kkl_mirror");
                 addSeedReview(toilet, campusGuide, 5, 1, 5, 10, true,
-                        "Prioritize high floors near staff offices. G and LG are much less impressive, but high floors are excellent.");
+                        "Prioritize high floors near staff offices. Low-key rose-gold cubicles and clean floors make it feel properly premium.",
+                        "res://review_kkl_stalls");
                 break;
             case "toilet_run_run_shaw_1f":
                 addSeedReview(toilet, libraryReviewer, 5, 1, 5, 10, true,
-                        "Upper floors are calm because card access keeps tourists away. Automatic flushing and a faint disinfectant smell make it feel reliable.");
+                        "Run Run Shaw 1/F is the apple toilet: so pleasant that people may actually come back on purpose. Automatic flushing and a faint clean smell make it reliable.",
+                        "res://review_rrs_apple");
                 addSeedReview(toilet, campusGuide, 4, 1, 5, 7, false,
                         "A strong quiet option near the Subway side. Good when you want to avoid the red-wall crowd.");
                 break;
@@ -611,9 +625,11 @@ public class MockToiletRepository implements ToiletRepository {
                 break;
             case "toilet_main_library_low":
                 addSeedReview(toilet, pickyReviewer, 1, 5, 1, 12, true,
-                        "Avoid if possible. Lower-floor Main Library toilets are repeatedly reported for strong smell and stressful conditions.");
+                        "Avoid if possible. Main Library 3/F and below are repeatedly reported for strong smell and stressful conditions.",
+                        "res://review_mainlib3_warning");
                 addSeedReview(toilet, libraryReviewer, 2, 4, 2, 5, false,
-                        "Only for emergencies. Go to 4/F or leave the building if you can.");
+                        "Only for emergencies. The 3/F Digital Arts study area has HKU's rare squat-toilet option, but I would still go to 4/F or leave the building if I can.",
+                        "res://review_mainlib3_squat");
                 break;
             case "toilet_cpd_low":
                 addSeedReview(toilet, campusGuide, 3, 4, 3, 3, false,
@@ -661,6 +677,10 @@ public class MockToiletRepository implements ToiletRepository {
     }
 
     private void addSeedReview(Toilet toilet, User user, int clean, int crowd, int overall, int likes, boolean likedByStudent, String comment) {
+        addSeedReview(toilet, user, clean, crowd, overall, likes, likedByStudent, comment, null);
+    }
+
+    private void addSeedReview(Toilet toilet, User user, int clean, int crowd, int overall, int likes, boolean likedByStudent, String comment, String imageUri) {
         Review review = new Review("review_" + toilet.id + "_" + String.format("%03d", toilet.reviews.size() + 1),
                 user.id,
                 user.displayName,
@@ -670,6 +690,7 @@ public class MockToiletRepository implements ToiletRepository {
                 comment,
                 System.currentTimeMillis() - (long) (toilet.reviews.size() + 1) * 43_200_000L,
                 likes);
+        review.imageUri = imageUri;
         if (likedByStudent && !studentUser.id.equals(user.id)) {
             review.markLikedBy(studentUser.id);
         }

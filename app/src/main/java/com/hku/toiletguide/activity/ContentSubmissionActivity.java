@@ -17,7 +17,6 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.RatingBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -34,13 +33,16 @@ public class ContentSubmissionActivity extends Activity {
     private static final int REQUEST_PICK_IMAGE = 1001;
     private static final int REQUEST_READ_MEDIA_IMAGES = 1002;
     private static final int REQUEST_READ_EXTERNAL_STORAGE = 1003;
+    private static final int RATING_CLEANLINESS = 0;
+    private static final int RATING_CROWDEDNESS = 1;
+    private static final int RATING_OVERALL = 2;
 
     private final MockToiletRepository repository = MockToiletRepository.getInstance();
     private String toiletId;
 
-    private RatingBar cleanlinessRating;
-    private RatingBar crowdednessRating;
-    private RatingBar overallRating;
+    private int cleanlinessRating;
+    private int crowdednessRating;
+    private int overallRating;
     private EditText commentInput;
     private TextView selectedImageView;
     private ImageView previewImageView;
@@ -71,9 +73,9 @@ public class ContentSubmissionActivity extends Activity {
 
     private void buildCommentForm(LinearLayout page) {
         page.addView(sectionTitle("Rate this toilet"));
-        cleanlinessRating = addRating(page, "Cleanliness");
-        crowdednessRating = addRating(page, "Crowdedness");
-        overallRating = addRating(page, "Overall experience");
+        addRating(page, "Cleanliness", RATING_CLEANLINESS);
+        addRating(page, "Crowdedness", RATING_CROWDEDNESS);
+        addRating(page, "Overall experience", RATING_OVERALL);
 
         page.addView(sectionTitle("Attach a photo"));
         previewRow = new LinearLayout(this);
@@ -151,7 +153,7 @@ public class ContentSubmissionActivity extends Activity {
         return title;
     }
 
-    private RatingBar addRating(LinearLayout page, String label) {
+    private void addRating(LinearLayout page, String label, int ratingType) {
         TextView textView = UiFactory.subtitle(this, label);
         textView.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
@@ -161,12 +163,45 @@ public class ContentSubmissionActivity extends Activity {
         textParams.setMargins(0, UiFactory.dp(this, 12), 0, 0);
         page.addView(textView, textParams);
 
-        RatingBar ratingBar = new RatingBar(this);
-        ratingBar.setNumStars(5);
-        ratingBar.setStepSize(1f);
-        ratingBar.setRating(4f);
-        page.addView(ratingBar);
-        return ratingBar;
+        LinearLayout stars = new LinearLayout(this);
+        stars.setGravity(Gravity.CENTER_VERTICAL);
+        stars.setOrientation(LinearLayout.HORIZONTAL);
+        updateEditableStars(stars, ratingType, 0);
+        page.addView(stars, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                UiFactory.dp(this, 58)
+        ));
+    }
+
+    private void updateEditableStars(LinearLayout stars, int ratingType, int selectedRating) {
+        stars.removeAllViews();
+        for (int i = 1; i <= 5; i++) {
+            final int score = i;
+            TextView star = UiFactory.label(this, "★", 42,
+                    i <= selectedRating ? Color.rgb(245, 179, 53) : Color.rgb(211, 214, 218),
+                    true);
+            star.setGravity(Gravity.CENTER);
+            star.setOnClickListener(v -> {
+                setRatingValue(ratingType, score);
+                updateEditableStars(stars, ratingType, score);
+            });
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    UiFactory.dp(this, 56),
+                    UiFactory.dp(this, 56)
+            );
+            params.setMargins(0, 0, UiFactory.dp(this, 6), 0);
+            stars.addView(star, params);
+        }
+    }
+
+    private void setRatingValue(int ratingType, int score) {
+        if (ratingType == RATING_CLEANLINESS) {
+            cleanlinessRating = score;
+        } else if (ratingType == RATING_CROWDEDNESS) {
+            crowdednessRating = score;
+        } else {
+            overallRating = score;
+        }
     }
 
     private EditText multilineInput(String hint) {
@@ -237,9 +272,9 @@ public class ContentSubmissionActivity extends Activity {
                 "review_submission_" + System.currentTimeMillis(),
                 repository.getCurrentUser().id,
                 repository.getCurrentUser().displayName,
-                Math.max(1, Math.round(cleanlinessRating.getRating())),
-                Math.max(1, Math.round(crowdednessRating.getRating())),
-                Math.max(1, Math.round(overallRating.getRating())),
+                cleanlinessRating,
+                crowdednessRating,
+                overallRating,
                 comment,
                 System.currentTimeMillis(),
                 0

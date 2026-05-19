@@ -10,8 +10,12 @@ public class DistanceUtil {
     }
 
     public static float distanceFromHkuCenter(double latitude, double longitude) {
+        return distanceBetween(HKU_LAT, HKU_LNG, latitude, longitude);
+    }
+
+    public static float distanceBetween(double fromLatitude, double fromLongitude, double toLatitude, double toLongitude) {
         float[] result = new float[1];
-        Location.distanceBetween(HKU_LAT, HKU_LNG, latitude, longitude, result);
+        Location.distanceBetween(fromLatitude, fromLongitude, toLatitude, toLongitude, result);
         return result[0];
     }
 

@@ -274,8 +274,11 @@ public class LoginActivity extends Activity {
     }
 
     private void openMain() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        Class<?> targetActivity = "admin".equals(repository.getCurrentUser().role)
+                ? AdminActivity.class
+                : MainActivity.class;
+        Intent intent = new Intent(this, targetActivity);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
     }

@@ -5,7 +5,9 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,7 +16,6 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.RatingBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -917,7 +918,57 @@ public class DetailActivity extends Activity {
         );
         commentParams.setMargins(0, UiFactory.dp(this, 6), 0, 0);
         card.addView(comment, commentParams);
+
+        View reviewImage = reviewImage(review.imageUri);
+        if (reviewImage != null) {
+            card.addView(reviewImage);
+        }
         return card;
+    }
+
+    private View reviewImage(String imageUri) {
+        Uri uri = uriForReviewImage(imageUri);
+        if (uri == null) {
+            return null;
+        }
+        ImageView image = new ImageView(this);
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        image.setBackground(UiFactory.rounded(this, Color.argb(92, 5, 17, 25), 12));
+        image.setClipToOutline(true);
+        image.setImageURI(uri);
+        image.setOnClickListener(v -> openImagePreview(imageUri));
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                UiFactory.dp(this, 180)
+        );
+        imageParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
+        image.setLayoutParams(imageParams);
+        return image;
+    }
+
+    private Uri uriForReviewImage(String imageUri) {
+        if (TextUtils.isEmpty(imageUri)) {
+            return null;
+        }
+        if (imageUri.startsWith("res://")) {
+            String name = imageUri.substring("res://".length());
+            int resId = getResources().getIdentifier(name, "drawable", getPackageName());
+            if (resId == 0) {
+                return null;
+            }
+            return Uri.parse("android.resource://" + getPackageName() + "/" + resId);
+        }
+        return Uri.parse(imageUri);
+    }
+
+    private void openImagePreview(String imageUri) {
+        Uri uri = uriForReviewImage(imageUri);
+        if (uri == null) {
+            return;
+        }
+        Intent intent = new Intent(this, ImagePreviewActivity.class);
+        intent.putExtra(ImagePreviewActivity.EXTRA_IMAGE_URI, uri.toString());
+        startActivity(intent);
     }
 
     private LinearLayout ratingRow(String label, double rating) {
@@ -929,20 +980,31 @@ public class DetailActivity extends Activity {
         name.setGravity(Gravity.CENTER_VERTICAL);
         row.addView(name, new LinearLayout.LayoutParams(UiFactory.dp(this, 86), UiFactory.dp(this, 30)));
 
-        RatingBar stars = new RatingBar(this, null, android.R.attr.ratingBarStyleSmall);
-        stars.setNumStars(5);
-        stars.setStepSize(1f);
-        stars.setRating((float) roundedWholeRating(rating));
-        stars.setIsIndicator(true);
-        row.addView(stars, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+        row.addView(readOnlyStars(roundedWholeRating(rating)), new LinearLayout.LayoutParams(
+                UiFactory.dp(this, 130),
+                UiFactory.dp(this, 32)
         ));
 
         TextView score = UiFactory.label(this, String.valueOf(roundedWholeRating(rating)), 13, Color.WHITE, true);
         score.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         row.addView(score, new LinearLayout.LayoutParams(0, UiFactory.dp(this, 30), 1f));
         return row;
+    }
+
+    private LinearLayout readOnlyStars(int rating) {
+        LinearLayout stars = new LinearLayout(this);
+        stars.setGravity(Gravity.CENTER_VERTICAL);
+        for (int i = 1; i <= 5; i++) {
+            TextView star = UiFactory.label(this, "★", 18,
+                    i <= rating ? Color.rgb(245, 179, 53) : Color.rgb(118, 126, 134),
+                    true);
+            star.setGravity(Gravity.CENTER);
+            stars.addView(star, new LinearLayout.LayoutParams(
+                    UiFactory.dp(this, 24),
+                    UiFactory.dp(this, 30)
+            ));
+        }
+        return stars;
     }
 
     private double quietnessScore(double crowdScore) {

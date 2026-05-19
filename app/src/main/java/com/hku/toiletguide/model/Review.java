@@ -15,6 +15,7 @@ public class Review {
     public final int overall;
     public final String comment;
     public final long createdAt;
+    public String imageUri;
     public int likes;
     private final Set<String> likedUserIds = new HashSet<>();
 

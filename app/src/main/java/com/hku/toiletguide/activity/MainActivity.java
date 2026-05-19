@@ -1,10 +1,23 @@
 package com.hku.toiletguide.activity;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Typeface;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -29,6 +42,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.hku.toiletguide.R;
 import com.hku.toiletguide.data.MockToiletRepository;
@@ -44,10 +58,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements SensorEventListener {
     public static final String EXTRA_TAB = "extra_tab";
     public static final String EXTRA_FOCUS_TOILET_ID = "extra_focus_toilet_id";
     public static final int TAB_MAP_INDEX = 1;
+    private static final int REQUEST_MAP_LOCATION = 4001;
 
     private static final int TAB_HOME = 0;
     private static final int TAB_MAP = TAB_MAP_INDEX;
@@ -64,15 +79,25 @@ public class MainActivity extends Activity {
     private String searchQuery = "";
     private int currentTab = TAB_HOME;
     private MapView mapView;
+    private GoogleMap googleMap;
     private Bundle mapViewState;
     private String focusedMapToiletId;
     private LinearLayout homePage;
     private View homeListPanelView;
     private boolean activityResumed;
+    private Location userLocation;
+    private SensorManager sensorManager;
+    private Sensor rotationSensor;
+    private Marker userDirectionMarker;
+    private float deviceBearing;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if (sensorManager != null) {
+            rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        }
         mapViewState = savedInstanceState;
         currentTab = normalizeTab(getIntent().getIntExtra(EXTRA_TAB, TAB_HOME));
         focusedMapToiletId = getIntent().getStringExtra(EXTRA_FOCUS_TOILET_ID);
@@ -96,6 +121,8 @@ public class MainActivity extends Activity {
         if (mapView != null) {
             mapView.onResume();
         }
+        registerDirectionSensor();
+        updateUserLocation(false);
     }
 
     @Override
@@ -104,12 +131,14 @@ public class MainActivity extends Activity {
         if (mapView != null) {
             mapView.onPause();
         }
+        unregisterDirectionSensor();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
         destroyMapView();
+        unregisterDirectionSensor();
         super.onDestroy();
     }
 
@@ -541,7 +570,7 @@ public class MainActivity extends Activity {
         brandRow.setPadding(UiFactory.dp(this, 14), UiFactory.dp(this, 10), UiFactory.dp(this, 14), UiFactory.dp(this, 10));
 
         ImageView brand = new ImageView(this);
-        brand.setImageResource(R.drawable.ic_brand_mark);
+        brand.setImageResource(R.drawable.ic_launcher);
         brand.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         brandRow.addView(brand, new LinearLayout.LayoutParams(UiFactory.dp(this, 52), UiFactory.dp(this, 52)));
 
@@ -590,12 +619,14 @@ public class MainActivity extends Activity {
         if (map == null) {
             return;
         }
+        googleMap = map;
 
         map.getUiSettings().setZoomControlsEnabled(true);
         map.getUiSettings().setCompassEnabled(true);
         map.getUiSettings().setMapToolbarEnabled(true);
         map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         map.clear();
+        enableMapLocation();
 
         Toilet focusedToilet = focusedMapToiletId == null ? null : repository.getToiletById(focusedMapToiletId);
         LatLng cameraTarget = focusedToilet == null
@@ -630,12 +661,6 @@ public class MainActivity extends Activity {
         if (toilet.id.equals(focusedMapToiletId)) {
             return BitmapDescriptorFactory.HUE_YELLOW;
         }
-        if ("male".equals(toilet.gender)) {
-            return BitmapDescriptorFactory.HUE_AZURE;
-        }
-        if ("female".equals(toilet.gender)) {
-            return BitmapDescriptorFactory.HUE_ROSE;
-        }
         return BitmapDescriptorFactory.HUE_GREEN;
     }
 
@@ -644,6 +669,167 @@ public class MainActivity extends Activity {
             mapView.onDestroy();
             mapView = null;
         }
+        userDirectionMarker = null;
+        googleMap = null;
+    }
+
+    private void enableMapLocation() {
+        if (googleMap == null) {
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+            }, REQUEST_MAP_LOCATION);
+            return;
+        }
+        try {
+            googleMap.setMyLocationEnabled(true);
+            googleMap.getUiSettings().setMyLocationButtonEnabled(true);
+            updateUserLocation(true);
+        } catch (SecurityException ignored) {
+            googleMap.getUiSettings().setMyLocationButtonEnabled(false);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_MAP_LOCATION) {
+            return;
+        }
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            enableMapLocation();
+            updateUserLocation(true);
+        }
+    }
+
+    private void updateUserLocation(boolean refreshContentWhenReady) {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        LocationManager manager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (manager == null) {
+            return;
+        }
+        try {
+            Location gps = manager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            Location network = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            Location best = newerLocation(gps, network);
+            if (best != null) {
+                userLocation = best;
+                updateDirectionMarker();
+            }
+
+            String provider = manager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                    ? LocationManager.GPS_PROVIDER
+                    : LocationManager.NETWORK_PROVIDER;
+            manager.requestSingleUpdate(provider, new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    userLocation = location;
+                    updateDirectionMarker();
+                    if (refreshContentWhenReady && currentTab != TAB_MAP) {
+                        setContentView(buildContent());
+                    }
+                }
+            }, null);
+        } catch (SecurityException | IllegalArgumentException ignored) {
+            // Keep the HKU center fallback if the device cannot provide a location.
+        }
+    }
+
+    private void registerDirectionSensor() {
+        if (sensorManager != null && rotationSensor != null) {
+            sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_UI);
+        }
+    }
+
+    private void unregisterDirectionSensor() {
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() != Sensor.TYPE_ROTATION_VECTOR) {
+            return;
+        }
+        float[] rotationMatrix = new float[9];
+        float[] orientation = new float[3];
+        SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+        SensorManager.getOrientation(rotationMatrix, orientation);
+        deviceBearing = (float) Math.toDegrees(orientation[0]);
+        if (deviceBearing < 0) {
+            deviceBearing += 360f;
+        }
+        updateDirectionMarker();
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // No UI change needed; the marker keeps the latest reliable bearing.
+    }
+
+    private void updateDirectionMarker() {
+        if (googleMap == null || userLocation == null) {
+            return;
+        }
+        LatLng position = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
+        if (userDirectionMarker == null) {
+            userDirectionMarker = googleMap.addMarker(new MarkerOptions()
+                    .position(position)
+                    .flat(true)
+                    .anchor(0.5f, 0.5f)
+                    .zIndex(1000f)
+                    .rotation(deviceBearing)
+                    .icon(BitmapDescriptorFactory.fromBitmap(directionMarkerBitmap())));
+        } else {
+            userDirectionMarker.setPosition(position);
+            userDirectionMarker.setRotation(deviceBearing);
+        }
+    }
+
+    private Bitmap directionMarkerBitmap() {
+        int size = UiFactory.dp(this, 54);
+        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        float center = size / 2f;
+
+        Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+        halo.setColor(Color.WHITE);
+        halo.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(center, center, size * 0.30f, halo);
+
+        Paint body = new Paint(Paint.ANTI_ALIAS_FLAG);
+        body.setColor(Color.rgb(42, 132, 255));
+        body.setStyle(Paint.Style.FILL);
+        Path arrow = new Path();
+        arrow.moveTo(center, size * 0.08f);
+        arrow.lineTo(size * 0.72f, size * 0.78f);
+        arrow.lineTo(center, size * 0.62f);
+        arrow.lineTo(size * 0.28f, size * 0.78f);
+        arrow.close();
+        canvas.drawPath(arrow, body);
+
+        Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dot.setColor(Color.rgb(42, 132, 255));
+        canvas.drawCircle(center, center, size * 0.12f, dot);
+        return bitmap;
+    }
+
+    private Location newerLocation(Location first, Location second) {
+        if (first == null) {
+            return second;
+        }
+        if (second == null) {
+            return first;
+        }
+        return first.getTime() >= second.getTime() ? first : second;
     }
 
     private HorizontalScrollView buildFilterBar() {
@@ -833,7 +1019,7 @@ public class MainActivity extends Activity {
         side.addView(stars, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         TextView distance = UiFactory.label(this,
-                DistanceUtil.metersLabel(DistanceUtil.distanceFromHkuCenter(toilet.latitude, toilet.longitude)),
+                DistanceUtil.metersLabel(distanceTo(toilet)),
                 15,
                 Color.WHITE,
                 true);
@@ -864,7 +1050,7 @@ public class MainActivity extends Activity {
         info.addView(name, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         TextView meta = UiFactory.label(this,
-                toilet.floor + " | " + toilet.genderLabel() + " | " + DistanceUtil.metersLabel(DistanceUtil.distanceFromHkuCenter(toilet.latitude, toilet.longitude)),
+                toilet.floor + " | " + toilet.genderLabel() + " | " + DistanceUtil.metersLabel(distanceTo(toilet)),
                 13,
                 Color.argb(220, 255, 255, 255),
                 false);
@@ -987,9 +1173,21 @@ public class MainActivity extends Activity {
         if (sortMode == 1) {
             Collections.sort(result, (a, b) -> Double.compare(b.avgOverall, a.avgOverall));
         } else {
-            Collections.sort(result, Comparator.comparingDouble(toilet -> DistanceUtil.distanceFromHkuCenter(toilet.latitude, toilet.longitude)));
+            Collections.sort(result, Comparator.comparingDouble(this::distanceTo));
         }
         return result;
+    }
+
+    private float distanceTo(Toilet toilet) {
+        if (userLocation != null) {
+            return DistanceUtil.distanceBetween(
+                    userLocation.getLatitude(),
+                    userLocation.getLongitude(),
+                    toilet.latitude,
+                    toilet.longitude
+            );
+        }
+        return DistanceUtil.distanceFromHkuCenter(toilet.latitude, toilet.longitude);
     }
 
     private boolean matchesSearch(Toilet toilet, String query) {
@@ -1043,21 +1241,24 @@ public class MainActivity extends Activity {
         RadioGroup sortGroup = new RadioGroup(this);
         sortGroup.setOrientation(RadioGroup.VERTICAL);
         sortGroup.setPadding(0, UiFactory.dp(this, 6), 0, UiFactory.dp(this, 8));
+        int distanceSortId = View.generateViewId();
+        int ratingSortId = View.generateViewId();
+
         RadioButton distance = new RadioButton(this);
         distance.setText("Distance");
         distance.setTextSize(15);
         distance.setTextColor(Color.WHITE);
         distance.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(230, 176, 58)));
-        distance.setId(1001);
+        distance.setId(distanceSortId);
         RadioButton rating = new RadioButton(this);
         rating.setText("Overall rating");
         rating.setTextSize(15);
         rating.setTextColor(Color.WHITE);
         rating.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(230, 176, 58)));
-        rating.setId(1002);
+        rating.setId(ratingSortId);
         sortGroup.addView(distance);
         sortGroup.addView(rating);
-        sortGroup.check(sortMode == 1 ? 1002 : 1001);
+        sortGroup.check(sortMode == 1 ? ratingSortId : distanceSortId);
         content.addView(sortGroup);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -1079,7 +1280,7 @@ public class MainActivity extends Activity {
                     showAccessible = accessible.isChecked();
                     requireTissue = tissue.isChecked();
                     requireDryer = dryer.isChecked();
-                    sortMode = sortGroup.getCheckedRadioButtonId() == 1002 ? 1 : 0;
+                    sortMode = sortGroup.getCheckedRadioButtonId() == ratingSortId ? 1 : 0;
                     setContentView(buildContent());
                 })
                 .create();

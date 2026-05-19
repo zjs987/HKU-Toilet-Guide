@@ -1,6 +1,7 @@
 package com.hku.toiletguide.activity;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.ImageDecoder;
 import android.graphics.drawable.GradientDrawable;
@@ -359,22 +360,34 @@ public class AdminActivity extends Activity {
         bar.setBackground(UiFactory.darkOverlayPanel(this, 24));
         bar.setPadding(UiFactory.dp(this, 12), UiFactory.dp(this, 8), UiFactory.dp(this, 12), UiFactory.dp(this, 8));
 
-        ImageView back = new ImageView(this);
-        back.setImageResource(R.drawable.ic_back);
-        back.setColorFilter(Color.WHITE);
-        back.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        back.setPadding(UiFactory.dp(this, 6), UiFactory.dp(this, 6), UiFactory.dp(this, 6), UiFactory.dp(this, 6));
-        back.setOnClickListener(v -> finish());
-        bar.addView(back, new LinearLayout.LayoutParams(UiFactory.dp(this, 44), UiFactory.dp(this, 44)));
-
         TextView label = UiFactory.label(this, title, 24, Color.WHITE, true);
         label.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, UiFactory.dp(this, 56), 1f);
-        labelParams.setMargins(UiFactory.dp(this, 12), 0, 0, 0);
         bar.addView(label, labelParams);
+
+        Button logout = new Button(this);
+        logout.setText("Log out");
+        logout.setAllCaps(false);
+        logout.setTextColor(Color.WHITE);
+        logout.setBackground(UiFactory.roundedStroke(this, Color.argb(86, 5, 17, 25), 16, Color.argb(100, 255, 255, 255), 1));
+        logout.setOnClickListener(v -> logout());
+        bar.addView(logout, new LinearLayout.LayoutParams(UiFactory.dp(this, 92), UiFactory.dp(this, 44)));
 
         wrapper.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return wrapper;
+    }
+
+    @Override
+    public void onBackPressed() {
+        moveTaskToBack(true);
+    }
+
+    private void logout() {
+        repository.logout();
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void moderate(ContentSubmission submission, boolean approved) {
