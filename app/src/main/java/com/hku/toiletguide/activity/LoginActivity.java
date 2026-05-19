@@ -96,18 +96,6 @@ public class LoginActivity extends Activity {
         titleParams.setMargins(0, UiFactory.dp(this, 12), 0, 0);
         intro.addView(title, titleParams);
 
-        TextView hint = UiFactory.label(this,
-                "Sign in with your saved demo account, or continue with the current user.",
-                15,
-                Color.argb(220, 255, 255, 255),
-                false);
-        hint.setLineSpacing(UiFactory.dp(this, 4), 1f);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        hintParams.setMargins(0, UiFactory.dp(this, 12), 0, 0);
-        intro.addView(hint, hintParams);
         page.addView(intro);
 
         LinearLayout card = new LinearLayout(this);
@@ -195,18 +183,6 @@ public class LoginActivity extends Activity {
         switchParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
         card.addView(switchModeButton, switchParams);
 
-        Button skipButton = new Button(this);
-        skipButton.setText("Continue as current user");
-        skipButton.setAllCaps(false);
-        skipButton.setTextColor(Color.WHITE);
-        skipButton.setBackground(UiFactory.roundedStroke(this, Color.argb(90, 5, 17, 25), 16, Color.argb(115, 255, 255, 255), 1));
-        skipButton.setOnClickListener(v -> openMain());
-        LinearLayout.LayoutParams skipParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                UiFactory.dp(this, 52)
-        );
-        skipParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
-        card.addView(skipButton, skipParams);
         return root;
     }
 

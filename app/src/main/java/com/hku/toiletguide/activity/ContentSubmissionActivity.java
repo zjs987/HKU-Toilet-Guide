@@ -85,8 +85,8 @@ public class ContentSubmissionActivity extends Activity {
         previewCard.setBackground(UiFactory.rounded(this, Color.rgb(236, 238, 241), 18));
         previewCard.setVisibility(View.GONE);
         LinearLayout.LayoutParams previewCardParams = new LinearLayout.LayoutParams(
-                UiFactory.dp(this, 104),
-                UiFactory.dp(this, 104)
+                UiFactory.dp(this, 72),
+                UiFactory.dp(this, 72)
         );
         previewCardParams.setMargins(0, 0, UiFactory.dp(this, 12), 0);
         previewRow.addView(previewCard, previewCardParams);
@@ -121,8 +121,8 @@ public class ContentSubmissionActivity extends Activity {
         addImageButton.setBackground(UiFactory.rounded(this, Color.rgb(236, 238, 241), 18));
         addImageButton.setOnClickListener(v -> openGalleryWithPermission());
         LinearLayout.LayoutParams pickParams = new LinearLayout.LayoutParams(
-                UiFactory.dp(this, 104),
-                UiFactory.dp(this, 104)
+                UiFactory.dp(this, 72),
+                UiFactory.dp(this, 72)
         );
         previewRow.addView(addImageButton, pickParams);
 

@@ -1,7 +1,6 @@
 package com.hku.toiletguide.activity;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.ImageDecoder;
 import android.graphics.drawable.GradientDrawable;
@@ -13,6 +12,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -31,6 +31,10 @@ import java.util.List;
 
 public class AdminActivity extends Activity {
     private final MockToiletRepository repository = MockToiletRepository.getInstance();
+    private static final int VIEW_PENDING_CONTENT = 0;
+    private static final int VIEW_ACTIVE_STATUSES = 1;
+
+    private int selectedSection = VIEW_PENDING_CONTENT;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,47 +48,78 @@ public class AdminActivity extends Activity {
         setContentView(buildContent());
     }
 
-    private ScrollView buildContent() {
+    private View buildContent() {
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.rgb(7, 17, 28));
+
+        ImageView background = new ImageView(this);
+        background.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        background.setImageResource(R.drawable.corridor);
+        root.addView(background, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        View overlay = new View(this);
+        overlay.setBackgroundColor(Color.argb(126, 6, 16, 26));
+        root.addView(overlay, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
         ScrollView scrollView = new ScrollView(this);
-        LinearLayout page = UiFactory.page(this);
-        page.setBackgroundColor(Color.WHITE);
-        scrollView.addView(page);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(Color.TRANSPARENT);
+
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(UiFactory.dp(this, 20), UiFactory.dp(this, 26), UiFactory.dp(this, 20), UiFactory.dp(this, 28));
+        scrollView.addView(page, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
 
         page.addView(backBar("Admin Dashboard"));
-        page.addView(UiFactory.subtitle(this, "Use this page for pending tasks. For direct toilet changes, open a toilet from Home, Map, or Ranking."));
+        page.addView(heroPanel("Use this page for pending tasks. For direct toilet changes, open a toilet from Home, Map, or Ranking."));
         page.addView(summaryRow());
 
-        page.addView(sectionTitle("Pending Content"));
-        List<ContentSubmission> submissions = repository.getContentSubmissions();
-        boolean hasPendingContent = false;
-        for (ContentSubmission submission : submissions) {
-            if (submission.isPending()) {
-                page.addView(contentCard(submission));
-                hasPendingContent = true;
-            }
-        }
-        if (!hasPendingContent) {
-            page.addView(emptyState("No pending content submissions."));
-        }
-
-        page.addView(sectionTitle("Active Status Issues"));
-        List<LiveStatusReport> reports = repository.getAllLiveStatusReports();
-        boolean hasActiveStatuses = false;
-        if (reports.isEmpty()) {
-            page.addView(emptyState("No status reports yet."));
-        } else {
-            for (LiveStatusReport report : reports) {
-                if (!report.resolved) {
-                    page.addView(statusCard(report));
-                    hasActiveStatuses = true;
+        if (selectedSection == VIEW_PENDING_CONTENT) {
+            page.addView(sectionTitle("Pending Content"));
+            List<ContentSubmission> submissions = repository.getContentSubmissions();
+            boolean hasPendingContent = false;
+            for (ContentSubmission submission : submissions) {
+                if (submission.isPending()) {
+                    page.addView(contentCard(submission));
+                    hasPendingContent = true;
                 }
             }
-        }
-        if (!hasActiveStatuses) {
-            page.addView(emptyState("No active status issues."));
+            if (!hasPendingContent) {
+                page.addView(emptyState("No pending content submissions."));
+            }
+        } else {
+            page.addView(sectionTitle("Active Status Issues"));
+            List<LiveStatusReport> reports = repository.getAllLiveStatusReports();
+            boolean hasActiveStatuses = false;
+            if (reports.isEmpty()) {
+                page.addView(emptyState("No status reports yet."));
+            } else {
+                for (LiveStatusReport report : reports) {
+                    if (!report.resolved && LiveStatusReport.isProblemStatus(report.statusCode)) {
+                        page.addView(statusCard(report));
+                        hasActiveStatuses = true;
+                    }
+                }
+            }
+            if (!hasActiveStatuses) {
+                page.addView(emptyState("No active status issues."));
+            }
         }
 
-        return scrollView;
+        root.addView(scrollView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        return root;
     }
 
     private LinearLayout summaryRow() {
@@ -97,7 +132,7 @@ public class AdminActivity extends Activity {
 
         int activeStatuses = 0;
         for (LiveStatusReport report : repository.getAllLiveStatusReports()) {
-            if (!report.resolved) {
+            if (!report.resolved && LiveStatusReport.isProblemStatus(report.statusCode)) {
                 activeStatuses++;
             }
         }
@@ -110,29 +145,35 @@ public class AdminActivity extends Activity {
         );
         params.setMargins(0, UiFactory.dp(this, 16), 0, UiFactory.dp(this, 8));
         row.setLayoutParams(params);
-        row.addView(summaryCard("Pending content", String.valueOf(pendingContent), Color.rgb(245, 179, 53)));
-        row.addView(summaryCard("Active statuses", String.valueOf(activeStatuses), UiFactory.DARK_GREEN));
+        row.addView(summaryCard("Pending content", String.valueOf(pendingContent), Color.rgb(245, 179, 53),
+                selectedSection == VIEW_PENDING_CONTENT, () -> switchSection(VIEW_PENDING_CONTENT)));
+        row.addView(summaryCard("Active statuses", String.valueOf(activeStatuses), Color.rgb(245, 179, 53),
+                selectedSection == VIEW_ACTIVE_STATUSES, () -> switchSection(VIEW_ACTIVE_STATUSES)));
         return row;
     }
 
-    private LinearLayout summaryCard(String label, String value, int color) {
+    private LinearLayout summaryCard(String label, String value, int color, boolean selected, Runnable action) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(UiFactory.rounded(this, Color.rgb(247, 249, 250), 14));
+        card.setBackground(selected
+                ? UiFactory.roundedStroke(this, Color.argb(156, 0, 126, 111), 14, Color.argb(120, 255, 255, 255), 1)
+                : UiFactory.frostedPanel(this, 14));
         card.setPadding(UiFactory.dp(this, 14), UiFactory.dp(this, 14), UiFactory.dp(this, 14), UiFactory.dp(this, 14));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         params.setMargins(0, 0, UiFactory.dp(this, 10), 0);
         card.setLayoutParams(params);
+        card.setClickable(true);
+        card.setOnClickListener(v -> action.run());
 
         card.addView(UiFactory.label(this, value, 26, color, true));
-        TextView text = UiFactory.label(this, label, 13, UiFactory.MUTED, false);
+        TextView text = UiFactory.label(this, label, 13, Color.WHITE, selected);
         text.setGravity(Gravity.CENTER_VERTICAL);
         card.addView(text);
         return card;
     }
 
     private TextView sectionTitle(String text) {
-        TextView title = UiFactory.label(this, text, 20, UiFactory.TEXT, true);
+        TextView title = UiFactory.label(this, text, 20, Color.WHITE, true);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -149,9 +190,9 @@ public class AdminActivity extends Activity {
         card.addView(UiFactory.label(this,
                 submission.typeLabel() + " · " + toiletLabel,
                 16,
-                UiFactory.TEXT,
+                Color.WHITE,
                 true));
-        card.addView(UiFactory.label(this, submission.userName + " · " + submission.createdLabel(), 13, UiFactory.MUTED, false));
+        card.addView(UiFactory.label(this, submission.userName + " · " + submission.createdLabel(), 13, Color.argb(220, 255, 255, 255), false));
 
         String body;
         if (ContentSubmission.TYPE_PHOTO.equals(submission.contentType)) {
@@ -161,13 +202,20 @@ public class AdminActivity extends Activity {
             body = "Clean " + submission.cleanliness + "/5 · Crowd " + submission.crowdedness + "/5 · Overall " + submission.overall + "/5"
                     + "\n" + submission.body;
         }
-        TextView content = UiFactory.label(this, body, 14, UiFactory.TEXT, false);
+        TextView content = UiFactory.label(this, body, 14, Color.WHITE, false);
         content.setLineSpacing(UiFactory.dp(this, 3), 1f);
         card.addView(content, blockParams(8));
 
         if (!TextUtils.isEmpty(submission.imageUri)) {
             ImageView preview = moderationPreview(submission.imageUri);
-            card.addView(preview, blockParams(10));
+            if (preview != null) {
+                LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
+                        UiFactory.dp(this, 120),
+                        UiFactory.dp(this, 120)
+                );
+                previewParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
+                card.addView(preview, previewParams);
+            }
         }
 
         LinearLayout actions = new LinearLayout(this);
@@ -185,12 +233,12 @@ public class AdminActivity extends Activity {
         card.addView(UiFactory.label(this,
                 LiveStatusReport.groupLabel(report.group()) + " · " + LiveStatusReport.labelFor(report.statusCode),
                 16,
-                UiFactory.TEXT,
+                Color.WHITE,
                 true));
         String subtitle = (toilet == null ? report.toiletId : toilet.building + " " + toilet.floor)
                 + " · by " + report.userName
                 + " · " + report.createdLabel();
-        card.addView(UiFactory.label(this, subtitle, 13, UiFactory.MUTED, false));
+        card.addView(UiFactory.label(this, subtitle, 13, Color.argb(220, 255, 255, 255), false));
 
         TextView status = UiFactory.label(this,
                 report.resolved
@@ -214,17 +262,29 @@ public class AdminActivity extends Activity {
 
     private LinearLayout emptyState(String text) {
         LinearLayout state = cardShell();
-        TextView label = UiFactory.label(this, text, 15, UiFactory.MUTED, false);
+        TextView label = UiFactory.label(this, text, 15, Color.argb(220, 255, 255, 255), false);
         label.setGravity(Gravity.CENTER);
         state.addView(label);
         return state;
+    }
+
+    private LinearLayout heroPanel(String text) {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(UiFactory.dp(this, 16), UiFactory.dp(this, 16), UiFactory.dp(this, 16), UiFactory.dp(this, 16));
+        panel.setBackground(UiFactory.frostedPanel(this, 18));
+
+        TextView subtitle = UiFactory.label(this, text, 14, Color.argb(220, 255, 255, 255), false);
+        subtitle.setLineSpacing(UiFactory.dp(this, 3), 1f);
+        panel.addView(subtitle);
+        return panel;
     }
 
     private LinearLayout cardShell() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(UiFactory.dp(this, 14), UiFactory.dp(this, 14), UiFactory.dp(this, 14), UiFactory.dp(this, 14));
-        card.setBackground(UiFactory.roundedStroke(this, Color.WHITE, 14, UiFactory.LINE));
+        card.setBackground(UiFactory.frostedPanel(this, 16));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -248,7 +308,7 @@ public class AdminActivity extends Activity {
         button.setText(text);
         button.setAllCaps(false);
         button.setTextColor(color);
-        button.setBackground(UiFactory.roundedStroke(this, Color.WHITE, 14, UiFactory.LINE));
+        button.setBackground(UiFactory.roundedStroke(this, Color.argb(86, 5, 17, 25), 14, Color.argb(95, 255, 255, 255), 1));
         button.setOnClickListener(listener);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -266,11 +326,6 @@ public class AdminActivity extends Activity {
         preview.setBackground(bg);
         preview.setClipToOutline(true);
         preview.setOnClickListener(v -> openImagePreview(imageUri));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                UiFactory.dp(this, 120),
-                UiFactory.dp(this, 120)
-        );
-        preview.setLayoutParams(params);
         try {
             Uri uri = Uri.parse(imageUri);
             if (android.os.Build.VERSION.SDK_INT >= 28) {
@@ -279,11 +334,10 @@ public class AdminActivity extends Activity {
             } else {
                 preview.setImageBitmap(MediaStore.Images.Media.getBitmap(getContentResolver(), uri));
             }
+            return preview;
         } catch (IOException | IllegalArgumentException error) {
-            preview.setImageResource(R.drawable.ic_comment);
-            preview.setColorFilter(UiFactory.MUTED);
+            return null;
         }
-        return preview;
     }
 
     private void openImagePreview(String imageUri) {
@@ -302,26 +356,24 @@ public class AdminActivity extends Activity {
 
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setBackground(UiFactory.darkOverlayPanel(this, 24));
+        bar.setPadding(UiFactory.dp(this, 12), UiFactory.dp(this, 8), UiFactory.dp(this, 12), UiFactory.dp(this, 8));
 
         ImageView back = new ImageView(this);
         back.setImageResource(R.drawable.ic_back);
-        back.setColorFilter(UiFactory.TEXT);
+        back.setColorFilter(Color.WHITE);
         back.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         back.setPadding(UiFactory.dp(this, 6), UiFactory.dp(this, 6), UiFactory.dp(this, 6), UiFactory.dp(this, 6));
-        back.setBackground(UiFactory.rounded(this, Color.WHITE, 22));
         back.setOnClickListener(v -> finish());
-        bar.addView(back, new LinearLayout.LayoutParams(UiFactory.dp(this, 48), UiFactory.dp(this, 56)));
+        bar.addView(back, new LinearLayout.LayoutParams(UiFactory.dp(this, 44), UiFactory.dp(this, 44)));
 
-        TextView label = UiFactory.label(this, title, 24, UiFactory.TEXT, true);
+        TextView label = UiFactory.label(this, title, 24, Color.WHITE, true);
         label.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, UiFactory.dp(this, 56), 1f);
         labelParams.setMargins(UiFactory.dp(this, 12), 0, 0, 0);
         bar.addView(label, labelParams);
 
-        wrapper.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiFactory.dp(this, 56)));
-        View line = new View(this);
-        line.setBackgroundColor(UiFactory.LINE);
-        wrapper.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiFactory.dp(this, 1)));
+        wrapper.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return wrapper;
     }
 
@@ -375,6 +427,14 @@ public class AdminActivity extends Activity {
             return LiveStatusReport.STATUS_DRYER_OK;
         }
         return LiveStatusReport.STATUS_OPEN;
+    }
+
+    private void switchSection(int section) {
+        if (selectedSection == section) {
+            return;
+        }
+        selectedSection = section;
+        setContentView(buildContent());
     }
 
 }

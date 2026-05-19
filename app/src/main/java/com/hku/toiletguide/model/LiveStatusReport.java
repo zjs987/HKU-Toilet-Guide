@@ -186,6 +186,16 @@ public class LiveStatusReport {
         return option == null ? groupLabel(groupFor(statusCode)) : option.title;
     }
 
+    public static boolean isNormalStatus(String statusCode) {
+        StatusOption option = option(statusCode);
+        return option != null && option.normal;
+    }
+
+    public static boolean isProblemStatus(String statusCode) {
+        StatusOption option = option(statusCode);
+        return option != null && !option.normal;
+    }
+
     public String group() {
         return groupFor(statusCode);
     }

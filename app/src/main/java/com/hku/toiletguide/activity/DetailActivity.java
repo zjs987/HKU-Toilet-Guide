@@ -37,6 +37,7 @@ public class DetailActivity extends Activity {
     private final MockToiletRepository repository = MockToiletRepository.getInstance();
     private String toiletId;
     private int selectedTab = 0;
+    private boolean adminHistoryExpanded;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -555,14 +556,6 @@ public class DetailActivity extends Activity {
         quickActions.addView(adminActionButton("Set status", v -> showAdminStatusDialog(toilet), false));
         block.addView(quickActions, topMargin(12));
 
-        List<LiveStatusReport> activeStatuses = repository.getLatestActiveStatuses(toilet.id);
-        if (!activeStatuses.isEmpty()) {
-            block.addView(UiFactory.label(this, "Active issues for this toilet", 14, Color.WHITE, true), topMargin(14));
-            for (LiveStatusReport report : activeStatuses) {
-                block.addView(adminStatusRow(report), topMargin(8));
-            }
-        }
-
         int pendingCount = pendingSubmissionCount(toilet.id);
         if (pendingCount > 0) {
             TextView pending = UiFactory.label(this,
@@ -573,7 +566,44 @@ public class DetailActivity extends Activity {
             pending.setLineSpacing(UiFactory.dp(this, 2), 1f);
             block.addView(pending, topMargin(14));
         }
+
+        block.addView(adminHistorySection(toilet), topMargin(16));
         return block;
+    }
+
+    private LinearLayout adminHistorySection(Toilet toilet) {
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+
+        Button toggle = new Button(this);
+        toggle.setText(adminHistoryExpanded ? "Collapse edit records" : "Expand edit records");
+        toggle.setAllCaps(false);
+        toggle.setTextColor(Color.WHITE);
+        toggle.setBackground(UiFactory.roundedStroke(this, Color.argb(86, 5, 17, 25), 14, Color.argb(95, 255, 255, 255), 1));
+        toggle.setOnClickListener(v -> {
+            adminHistoryExpanded = !adminHistoryExpanded;
+            setContentView(buildContent());
+        });
+        section.addView(toggle, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                UiFactory.dp(this, 46)
+        ));
+
+        if (!adminHistoryExpanded) {
+            return section;
+        }
+
+        List<LiveStatusReport> records = repository.getLiveStatusReports(toilet.id);
+        if (records.isEmpty()) {
+            section.addView(UiFactory.label(this, "No edit records yet.", 13, Color.argb(210, 255, 255, 255), false), topMargin(10));
+            return section;
+        }
+
+        section.addView(UiFactory.label(this, "Edit records", 14, Color.WHITE, true), topMargin(12));
+        for (LiveStatusReport report : records) {
+            section.addView(adminStatusRow(report), topMargin(8));
+        }
+        return section;
     }
 
     private LinearLayout adminStatusRow(LiveStatusReport report) {
@@ -593,20 +623,31 @@ public class DetailActivity extends Activity {
                 Color.argb(210, 255, 255, 255),
                 false), topMargin(4));
 
-        LinearLayout actions = new LinearLayout(this);
-        actions.setGravity(Gravity.RIGHT);
-        actions.addView(adminChipButton("Resolve", v -> {
-            repository.resolveLiveStatus(report.id);
-            Toast.makeText(this, "Status marked resolved", Toast.LENGTH_SHORT).show();
-            setContentView(buildContent());
-        }, UiFactory.DARK_GREEN));
-        actions.addView(adminChipButton(normalizeLabel(report), v -> {
-            repository.resolveLiveStatus(report.id);
-            repository.submitLiveStatuses(report.toiletId, java.util.Collections.singletonList(restoreStatusFor(report.statusCode)));
-            Toast.makeText(this, "Status restored to normal", Toast.LENGTH_SHORT).show();
-            setContentView(buildContent());
-        }, UiFactory.BLUE));
-        row.addView(actions, topMargin(10));
+        TextView state = UiFactory.label(this,
+                report.resolved
+                        ? "Resolved by " + report.resolvedByUserName + " · " + report.resolvedLabel()
+                        : "Active issue",
+                12,
+                report.resolved ? Color.argb(210, 255, 255, 255) : Color.rgb(245, 179, 53),
+                true);
+        row.addView(state, topMargin(6));
+
+        if (!report.resolved && LiveStatusReport.isProblemStatus(report.statusCode)) {
+            LinearLayout actions = new LinearLayout(this);
+            actions.setGravity(Gravity.RIGHT);
+            actions.addView(adminChipButton("Resolve", v -> {
+                repository.resolveLiveStatus(report.id);
+                Toast.makeText(this, "Status marked resolved", Toast.LENGTH_SHORT).show();
+                setContentView(buildContent());
+            }, UiFactory.DARK_GREEN));
+            actions.addView(adminChipButton(normalizeLabel(report), v -> {
+                repository.resolveLiveStatus(report.id);
+                repository.submitLiveStatuses(report.toiletId, java.util.Collections.singletonList(restoreStatusFor(report.statusCode)));
+                Toast.makeText(this, "Status restored to normal", Toast.LENGTH_SHORT).show();
+                setContentView(buildContent());
+            }, UiFactory.BLUE));
+            row.addView(actions, topMargin(10));
+        }
         return row;
     }
 
@@ -893,7 +934,10 @@ public class DetailActivity extends Activity {
         stars.setStepSize(1f);
         stars.setRating((float) roundedWholeRating(rating));
         stars.setIsIndicator(true);
-        row.addView(stars, new LinearLayout.LayoutParams(UiFactory.dp(this, 118), UiFactory.dp(this, 32)));
+        row.addView(stars, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
 
         TextView score = UiFactory.label(this, String.valueOf(roundedWholeRating(rating)), 13, Color.WHITE, true);
         score.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);

@@ -204,38 +204,6 @@ public class MainActivity extends Activity {
 
         hero.addView(buildBrandRow());
 
-        TextView eyebrow = UiFactory.label(this, "CAMPUS WAYFINDING", 12, Color.argb(220, 255, 255, 255), false);
-        eyebrow.setLetterSpacing(0.26f);
-        LinearLayout.LayoutParams eyebrowParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        eyebrowParams.setMargins(0, UiFactory.dp(this, 28), 0, 0);
-        hero.addView(eyebrow, eyebrowParams);
-
-        TextView headline = UiFactory.label(this, "Find the right washroom before the queue finds you", 29, Color.WHITE, true);
-        headline.setLineSpacing(UiFactory.dp(this, 5), 1f);
-        headline.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams headlineParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        headlineParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
-        hero.addView(headline, headlineParams);
-
-        TextView subtitle = UiFactory.label(this,
-                "Live shortlist for " + repository.getCurrentUser().displayName + ". Compare distance, crowd level and facilities without losing the quick access you already had.",
-                15,
-                Color.argb(220, 255, 255, 255),
-                false);
-        subtitle.setLineSpacing(UiFactory.dp(this, 4), 1f);
-        LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        subtitleParams.setMargins(0, UiFactory.dp(this, 10), 0, UiFactory.dp(this, 20));
-        hero.addView(subtitle, subtitleParams);
-
         LinearLayout search = new LinearLayout(this);
         search.setOrientation(LinearLayout.HORIZONTAL);
         search.setGravity(Gravity.CENTER_VERTICAL);
@@ -289,11 +257,18 @@ public class MainActivity extends Activity {
         advanced.setGravity(Gravity.CENTER);
         advanced.setBackground(UiFactory.roundedStroke(this, Color.argb(135, 5, 17, 25), 24, Color.argb(95, 255, 255, 255), 1));
         advanced.setOnClickListener(v -> showAdvancedFilterDialog());
-        search.addView(advanced, new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams advancedParams = new LinearLayout.LayoutParams(
                 UiFactory.dp(this, 108),
                 UiFactory.dp(this, 46)
-        ));
-        hero.addView(search);
+        );
+        advancedParams.setMargins(UiFactory.dp(this, 8), 0, 0, 0);
+        search.addView(advanced, advancedParams);
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        searchParams.setMargins(0, UiFactory.dp(this, 28), 0, 0);
+        hero.addView(search, searchParams);
         return hero;
     }
 
@@ -429,19 +404,6 @@ public class MainActivity extends Activity {
         titleParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
         page.addView(title, titleParams);
 
-        TextView subtitle = UiFactory.label(this,
-                "Sorted by overall rating so students can quickly spot the best reviewed options before walking over.",
-                15,
-                Color.argb(220, 255, 255, 255),
-                false);
-        subtitle.setLineSpacing(UiFactory.dp(this, 4), 1f);
-        LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        subtitleParams.setMargins(0, UiFactory.dp(this, 10), 0, UiFactory.dp(this, 20));
-        page.addView(subtitle, subtitleParams);
-
         page.addView(buildRankingPanel());
         return scrollView;
     }
@@ -496,29 +458,6 @@ public class MainActivity extends Activity {
         );
         eyebrowParams.setMargins(0, UiFactory.dp(this, 28), 0, 0);
         page.addView(eyebrow, eyebrowParams);
-
-        TextView title = UiFactory.label(this, "Your saved account and activity", 29, Color.WHITE, true);
-        title.setLineSpacing(UiFactory.dp(this, 5), 1f);
-        title.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        titleParams.setMargins(0, UiFactory.dp(this, 10), 0, 0);
-        page.addView(title, titleParams);
-
-        TextView subtitle = UiFactory.label(this,
-                "Check your local account, demo role and quick shortcuts without leaving the same navigation shell.",
-                15,
-                Color.argb(220, 255, 255, 255),
-                false);
-        subtitle.setLineSpacing(UiFactory.dp(this, 4), 1f);
-        LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        subtitleParams.setMargins(0, UiFactory.dp(this, 10), 0, UiFactory.dp(this, 20));
-        page.addView(subtitle, subtitleParams);
 
         page.addView(buildMinePanel());
         return scrollView;
@@ -1079,7 +1018,8 @@ public class MainActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         int padding = UiFactory.dp(this, 18);
-        content.setPadding(padding, UiFactory.dp(this, 8), padding, 0);
+        content.setPadding(padding, UiFactory.dp(this, 12), padding, 0);
+        content.setBackground(UiFactory.rounded(this, Color.rgb(16, 25, 36), 24));
 
         CheckBox male = filterCheckBox("Male toilets", showMale);
         CheckBox female = filterCheckBox("Female toilets", showFemale);
@@ -1092,7 +1032,7 @@ public class MainActivity extends Activity {
         content.addView(tissue);
         content.addView(dryer);
 
-        TextView sortTitle = UiFactory.label(this, "Sort by", 15, UiFactory.TEXT, true);
+        TextView sortTitle = UiFactory.label(this, "Sort by", 15, Color.WHITE, true);
         LinearLayout.LayoutParams sortTitleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1102,23 +1042,28 @@ public class MainActivity extends Activity {
 
         RadioGroup sortGroup = new RadioGroup(this);
         sortGroup.setOrientation(RadioGroup.VERTICAL);
+        sortGroup.setPadding(0, UiFactory.dp(this, 6), 0, UiFactory.dp(this, 8));
         RadioButton distance = new RadioButton(this);
         distance.setText("Distance");
         distance.setTextSize(15);
+        distance.setTextColor(Color.WHITE);
+        distance.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(230, 176, 58)));
         distance.setId(1001);
         RadioButton rating = new RadioButton(this);
         rating.setText("Overall rating");
         rating.setTextSize(15);
+        rating.setTextColor(Color.WHITE);
+        rating.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(230, 176, 58)));
         rating.setId(1002);
         sortGroup.addView(distance);
         sortGroup.addView(rating);
         sortGroup.check(sortMode == 1 ? 1002 : 1001);
         content.addView(sortGroup);
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Advanced filter")
                 .setView(content)
-                .setNegativeButton("Reset", (dialog, which) -> {
+                .setNegativeButton("Reset", (dialogInterface, which) -> {
                     showMale = false;
                     showFemale = false;
                     showAccessible = false;
@@ -1128,7 +1073,7 @@ public class MainActivity extends Activity {
                     searchQuery = "";
                     setContentView(buildContent());
                 })
-                .setPositiveButton("Apply", (dialog, which) -> {
+                .setPositiveButton("Apply", (dialogInterface, which) -> {
                     showMale = male.isChecked();
                     showFemale = female.isChecked();
                     showAccessible = accessible.isChecked();
@@ -1137,14 +1082,32 @@ public class MainActivity extends Activity {
                     sortMode = sortGroup.getCheckedRadioButtonId() == 1002 ? 1 : 0;
                     setContentView(buildContent());
                 })
-                .show();
+                .create();
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(UiFactory.rounded(this, Color.argb(245, 10, 18, 28), 26));
+        }
+        TextView titleView = dialog.findViewById(android.R.id.title);
+        if (titleView != null) {
+            titleView.setTextColor(Color.WHITE);
+        }
+        Button negative = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        if (negative != null) {
+            negative.setTextColor(Color.rgb(230, 176, 58));
+        }
+        if (positive != null) {
+            positive.setTextColor(Color.WHITE);
+        }
     }
 
     private CheckBox filterCheckBox(String text, boolean checked) {
         CheckBox checkBox = new CheckBox(this);
         checkBox.setText(text);
         checkBox.setTextSize(15);
+        checkBox.setTextColor(Color.WHITE);
         checkBox.setChecked(checked);
+        checkBox.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(230, 176, 58)));
         checkBox.setGravity(Gravity.CENTER_VERTICAL);
         checkBox.setPadding(0, UiFactory.dp(this, 4), 0, UiFactory.dp(this, 4));
         return checkBox;

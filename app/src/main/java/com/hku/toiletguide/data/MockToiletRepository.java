@@ -278,6 +278,9 @@ public class MockToiletRepository implements ToiletRepository {
             if (report.resolved) {
                 continue;
             }
+            if (!LiveStatusReport.isProblemStatus(report.statusCode)) {
+                continue;
+            }
             String group = report.group();
             if (!latestByGroup.containsKey(group)) {
                 latestByGroup.put(group, report);
