@@ -133,21 +133,7 @@ public class DetailActivity extends Activity {
         back.setOnClickListener(v -> finish());
         top.addView(back, new LinearLayout.LayoutParams(0, UiFactory.dp(this, 48), 1f));
 
-        TextView share = iconButton("Share");
-        TextView call = iconButton("Call");
-        top.addView(share);
-        top.addView(call);
         return top;
-    }
-
-    private TextView iconButton(String text) {
-        TextView view = UiFactory.label(this, text, 12, Color.WHITE, true);
-        view.setGravity(Gravity.CENTER);
-        view.setBackground(UiFactory.roundedStroke(this, Color.argb(86, 5, 17, 25), 18, Color.argb(100, 255, 255, 255), 1));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(UiFactory.dp(this, 54), UiFactory.dp(this, 38));
-        params.setMargins(UiFactory.dp(this, 6), 0, 0, 0);
-        view.setLayoutParams(params);
-        return view;
     }
 
     private LinearLayout buildHeader(Toilet toilet) {
