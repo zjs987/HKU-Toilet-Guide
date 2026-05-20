@@ -4,114 +4,8 @@ HKU Toilet Guide is an Android application for the COMP7506C Smart Phone Apps De
 
 The project is written in Java and built with Android Studio. It uses Google Maps SDK for Android for the map screen, and it stores demo users, toilets, reviews, likes, favorites, reports, and moderation records locally with `SharedPreferences` and JSON serialization.
 
-## Main Features
 
-### 1. Login and User Roles
-
-- Users enter the app through a login screen.
-- Demo student and admin accounts are provided for testing.
-- New local user accounts can be created from the registration screen.
-- Login state is stored locally, so the app can remember the current user.
-- Admin users enter a separate admin console instead of the normal user homepage.
-
-### 2. Home Screen and Toilet Discovery
-
-- The home screen shows nearby toilet records with a campus-themed visual design.
-- Users can search by building name, floor, gender, facility, and notes.
-- Quick filters support male toilet, female toilet, accessible toilet, tissue, and hand dryer.
-- Advanced filter supports facility filtering and sorting.
-- Results show toilet name, floor, distance, star rating, facilities, and crowd level.
-- Crowd level is shown with person icons, where more highlighted people means more crowded.
-
-### 3. Google Maps Screen
-
-- The map screen displays toilet markers around HKU.
-- Users can tap a marker to preview toilet name, rating, and crowd status.
-- Tapping the marker info window opens the toilet detail page.
-- The app can show the user's current location when location permission is granted.
-- A custom blue direction marker is used when orientation sensor data is available.
-- Detail pages include a `Go` action that opens the map and focuses on the selected toilet.
-
-### 4. Toilet Detail Page
-
-Each toilet detail page includes:
-
-- Building and floor information
-- Location note
-- Gender type
-- Facility tags, such as accessible toilet, tissue, dryer, baby room, and sink
-- Current crowd level
-- Live status, such as normal, closed, maintenance, no tissue, or queue
-- Cleanliness, quietness, and overall rating
-- User reviews and review images
-- Favorite button
-- Review button
-- Status report button
-- Admin direct-edit controls when logged in as admin
-
-### 5. Reviews, Ratings, and Likes
-
-- Users can add reviews for a toilet.
-- Reviews include cleanliness, crowdedness, and overall star ratings.
-- Star rating uses a five-star scale.
-- Users can write review comments.
-- Some seeded reviews include toilet photos for demonstration.
-- Users can like reviews.
-- Review likes are stored locally.
-
-### 6. Favorites and Personal Page
-
-- Users can save toilets to favorites.
-- The Mine page shows account information and shortcuts.
-- Users can view saved toilets.
-- Users can view their own submissions and moderation status.
-- Users can log out and return to the login screen.
-
-### 7. Ranking
-
-- Toilets are ranked by review data and overall rating.
-- The top three toilets use gold, silver, and bronze medal icons.
-- Later ranks use numbered circles.
-- Ranking helps users quickly find highly rated toilets on campus.
-
-### 8. Live Status Reporting
-
-Users can submit live issue reports, including:
-
-- Toilet closed
-- Under maintenance
-- No tissue
-- Long queue
-- Strong smell or other abnormal condition
-
-These reports appear in the app and can be reviewed or resolved by the admin.
-
-### 9. Admin Console
-
-Admin users have a separate management interface. The admin console supports:
-
-- Viewing pending user submissions
-- Approving or rejecting submitted reviews/photos
-- Viewing active toilet status reports
-- Resolving live issues
-- Updating crowd level or operational status from the toilet detail page
-
-This makes the project more than a simple toilet listing app: it includes a basic user-generated-content and moderation workflow.
-
-## Demo Accounts
-
-| Role | Email | Password | Purpose |
-| --- | --- | --- | --- |
-| Student | `hku.student@connect.hku.hk` | `student123` | Normal app usage |
-| Admin | `admin@hku.hk` | `admin123` | Admin console and moderation |
-| Demo reviewer | `reviewer002@connect.hku.hk` | `demo123` | Seeded review account |
-| Demo reviewer | `reviewer003@connect.hku.hk` | `demo123` | Seeded review account |
-| Demo reviewer | `guide004@connect.hku.hk` | `demo123` | Seeded review account |
-| Demo reviewer | `rush005@connect.hku.hk` | `demo123` | Seeded review account |
-
-Registered accounts are stored locally on the device.
-
-## How to Build and Run
+## How to Compile
 
 ### Requirements
 
@@ -125,17 +19,12 @@ Registered accounts are stored locally on the device.
 
 1. Open Android Studio.
 2. Choose `Open`.
-3. Select this folder:
-
-   ```text
-   E:\Software\Android\HKU-Toilet-Guide
-   ```
-
+3. Select the project root folder.
 4. Wait for Gradle sync to finish.
-5. Select an emulator or physical Android device.
-6. Run the `app` configuration.
 
-### Command-Line Build
+### Build
+
+You can compile the app in Android Studio by running the `app` configuration, or from the project root with:
 
 From the project root:
 
@@ -144,6 +33,13 @@ From the project root:
 ```
 
 If Android Studio reports missing SDK configuration, make sure `local.properties` exists and points to the correct Android SDK path.
+
+## How to Run
+
+1. Start an Android emulator or connect a physical Android device.
+2. In Android Studio, run the `app` configuration.
+3. Or install the debug APK from `app/build/outputs/apk/debug/` after a successful build.
+4. Log in with a demo account or create a local account.
 
 ## Google Maps Configuration
 
@@ -317,3 +213,112 @@ app/src/main/java/com/hku/toiletguide/
 - Review images are stored as local/demo image references rather than uploaded to cloud storage.
 - Route planning is not implemented as a full in-app navigation engine; the current focus is map markers, location, and toilet discovery.
 - A future version could add Firebase backend, image upload, campus indoor floor plans, and route guidance.
+
+
+
+## Main Features
+
+### 1. Login and User Roles
+
+- Users enter the app through a login screen.
+- Demo student and admin accounts are provided for testing.
+- New local user accounts can be created from the registration screen.
+- Login state is stored locally, so the app can remember the current user.
+- Admin users enter a separate admin console instead of the normal user homepage.
+
+### 2. Home Screen and Toilet Discovery
+
+- The home screen shows nearby toilet records with a campus-themed visual design.
+- Users can search by building name, floor, gender, facility, and notes.
+- Quick filters support male toilet, female toilet, accessible toilet, tissue, and hand dryer.
+- Advanced filter supports facility filtering and sorting.
+- Results show toilet name, floor, distance, star rating, facilities, and crowd level.
+- Crowd level is shown with person icons, where more highlighted people means more crowded.
+
+### 3. Google Maps Screen
+
+- The map screen displays toilet markers around HKU.
+- Users can tap a marker to preview toilet name, rating, and crowd status.
+- Tapping the marker info window opens the toilet detail page.
+- The app can show the user's current location when location permission is granted.
+- A custom blue direction marker is used when orientation sensor data is available.
+- Detail pages include a `Go` action that opens the map and focuses on the selected toilet.
+
+### 4. Toilet Detail Page
+
+Each toilet detail page includes:
+
+- Building and floor information
+- Location note
+- Gender type
+- Facility tags, such as accessible toilet, tissue, dryer, baby room, and sink
+- Current crowd level
+- Live status, such as normal, closed, maintenance, no tissue, or queue
+- Cleanliness, quietness, and overall rating
+- User reviews and review images
+- Favorite button
+- Review button
+- Status report button
+- Admin direct-edit controls when logged in as admin
+
+### 5. Reviews, Ratings, and Likes
+
+- Users can add reviews for a toilet.
+- Reviews include cleanliness, crowdedness, and overall star ratings.
+- Star rating uses a five-star scale.
+- Users can write review comments.
+- Some seeded reviews include toilet photos for demonstration.
+- Users can like reviews.
+- Review likes are stored locally.
+
+### 6. Favorites and Personal Page
+
+- Users can save toilets to favorites.
+- The Mine page shows account information and shortcuts.
+- Users can view saved toilets.
+- Users can view their own submissions and moderation status.
+- Users can log out and return to the login screen.
+
+### 7. Ranking
+
+- Toilets are ranked by review data and overall rating.
+- The top three toilets use gold, silver, and bronze medal icons.
+- Later ranks use numbered circles.
+- Ranking helps users quickly find highly rated toilets on campus.
+
+### 8. Live Status Reporting
+
+Users can submit live issue reports, including:
+
+- Toilet closed
+- Under maintenance
+- No tissue
+- Long queue
+- Strong smell or other abnormal condition
+
+These reports appear in the app and can be reviewed or resolved by the admin.
+
+### 9. Admin Console
+
+Admin users have a separate management interface. The admin console supports:
+
+- Viewing pending user submissions
+- Approving or rejecting submitted reviews/photos
+- Viewing active toilet status reports
+- Resolving live issues
+- Updating crowd level or operational status from the toilet detail page
+
+This makes the project more than a simple toilet listing app: it includes a basic user-generated-content and moderation workflow.
+
+## Demo Accounts
+
+| Role | Email | Password | Purpose |
+| --- | --- | --- | --- |
+| Student | `hku.student@connect.hku.hk` | `student123` | Normal app usage |
+| Admin | `admin@hku.hk` | `admin123` | Admin console and moderation |
+| Demo reviewer | `reviewer002@connect.hku.hk` | `demo123` | Seeded review account |
+| Demo reviewer | `reviewer003@connect.hku.hk` | `demo123` | Seeded review account |
+| Demo reviewer | `guide004@connect.hku.hk` | `demo123` | Seeded review account |
+| Demo reviewer | `rush005@connect.hku.hk` | `demo123` | Seeded review account |
+
+Registered accounts are stored locally on the device.
